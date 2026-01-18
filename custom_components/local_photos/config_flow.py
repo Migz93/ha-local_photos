@@ -20,6 +20,8 @@ from .const import (
     CONF_FOLDER_PATH,
 )
 
+_LOGGER = logging.getLogger(__name__)
+
 
 class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Local Photos."""
@@ -160,16 +162,122 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
 
     def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
         """Initialize options flow."""
-        self.config_entry = config_entry
+        self._config_entry = config_entry
+        self.folder_path = None
 
     async def async_step_init(self, user_input=None):
         """Handle options flow."""
-        if user_input is not None:
-            return self.async_create_entry(title="", data=self.config_entry.options)
+        if user_input is None:
+            # Get current values from config entry
+            current_folder_path = self._config_entry.options.get(
+                CONF_FOLDER_PATH, 
+                os.path.join(self.hass.config.config_dir, "www", "images")
+            )
             
-        return self.async_show_form(
-            step_id="init",
-            description_placeholders={
-                "model": "Local Photos",
-            },
+            # Show folder path input form
+            return self.async_show_form(
+                step_id="init",
+                data_schema=vol.Schema(
+                    {
+                        vol.Required(
+                            CONF_FOLDER_PATH, 
+                            default=current_folder_path
+                        ): str,
+                    }
+                ),
+            )
+
+        # User has entered a folder path, now show album selection
+        folder_path = user_input[CONF_FOLDER_PATH]
+        
+        # Validate the folder path
+        if not os.path.isabs(folder_path):
+            folder_path = os.path.join(self.hass.config.config_dir, folder_path)
+            
+        # Check if the directory exists
+        if not os.path.exists(folder_path):
+            current_folder_path = user_input[CONF_FOLDER_PATH]
+            return self.async_show_form(
+                step_id="init",
+                data_schema=vol.Schema(
+                    {
+                        vol.Required(
+                            CONF_FOLDER_PATH, 
+                            default=current_folder_path
+                        ): str,
+                    }
+                ),
+                errors={"base": "directory_not_found"}
+            )
+            
+        # Store the folder path for later use
+        self.folder_path = folder_path
+        
+        # Move to the album selection step
+        return await self.async_step_album_select()
+        
+    async def async_step_album_select(self, user_input=None):
+        """Handle the album selection step."""
+        if user_input is None:
+            # Show album selection form
+            album_schema = await self._get_albumselect_schema()
+            return self.async_show_form(
+                step_id="album_select",
+                data_schema=album_schema,
+            )
+
+        # User has selected an album, update the options
+        album_id = user_input[CONF_ALBUM_ID]
+        
+        # Create updated options with the selected album and folder path
+        updated_options = {
+            **self._config_entry.options,
+            CONF_ALBUM_ID: [album_id],
+            CONF_FOLDER_PATH: self.folder_path,
+        }
+
+        return self.async_create_entry(title="", data=updated_options)
+        
+    async def _get_albumselect_schema(self) -> vol.Schema:
+        """Return album selection form"""
+        # Use the user-specified photos directory
+        photos_dir = self.folder_path
+        album_selection = {CONF_ALBUM_ID_FAVORITES: "All Photos"}
+        
+        # Get current album selection
+        current_album_id = self._config_entry.options.get(CONF_ALBUM_ID, [CONF_ALBUM_ID_FAVORITES])
+        if isinstance(current_album_id, list) and len(current_album_id) > 0:
+            current_album_id = current_album_id[0]
+        else:
+            current_album_id = CONF_ALBUM_ID_FAVORITES
+        
+        try:
+            # Define a function to run in the executor
+            def scan_albums():
+                albums_info = {}
+                if not os.path.exists(photos_dir):
+                    return albums_info
+                    
+                for item in os.listdir(photos_dir):
+                    item_path = os.path.join(photos_dir, item)
+                    if os.path.isdir(item_path):
+                        # Count the number of image files in the directory
+                        image_count = 0
+                        for root, _, files in os.walk(item_path):
+                            for file in files:
+                                if file.lower().endswith((".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp")):
+                                    image_count += 1
+                        albums_info[item] = f"{item} ({image_count} items)"
+                return albums_info
+                
+            # Run the file operations in a separate thread
+            albums = await self.hass.async_add_executor_job(scan_albums)
+            album_selection.update(albums)
+        except Exception as err:
+            _LOGGER.error("Error scanning albums: %s", err)
+
+        return vol.Schema(
+            {
+                vol.Required(CONF_ALBUM_ID, default=current_album_id): vol.In(album_selection),
+            }
         )

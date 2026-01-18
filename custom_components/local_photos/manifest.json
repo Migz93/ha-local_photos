@@ -5,11 +5,11 @@
     "@Migz93"
   ],
   "config_flow": true,
-  "documentation": "https://github.com/migz93/ha-local-photos",
+  "documentation": "https://github.com/migz93/ha-local_photos",
   "iot_class": "local_polling",
-  "issue_tracker": "https://github.com/migz93/ha-local-photos/issues",
+  "issue_tracker": "https://github.com/migz93/ha-local_photos/issues",
   "requirements": [
     "pillow"
   ],
-  "version": "v1.1.0"
+  "version": "v1.2.0"
 }
