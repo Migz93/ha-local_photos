@@ -9,6 +9,7 @@ if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
 
 from custom_components.local_photos.api import LocalPhotosDirectoryNotFoundError
+from custom_components.local_photos.api.client import SUPPORTED_EXTENSIONS
 
 
 async def validate_folder_path(hass: HomeAssistant, folder_path: str) -> dict[str, str]:
@@ -28,9 +29,7 @@ async def validate_folder_path(hass: HomeAssistant, folder_path: str) -> dict[st
         albums: dict[str, str] = {"ALL": "All Photos"}
         for item in p.iterdir():
             if item.is_dir():
-                image_count = sum(
-                    1 for f in item.rglob("*") if f.suffix.lower() in {".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp"}
-                )
+                image_count = sum(1 for f in item.rglob("*") if f.suffix.lower() in SUPPORTED_EXTENSIONS)
                 albums[item.name] = f"{item.name} ({image_count} items)"
         return albums
 

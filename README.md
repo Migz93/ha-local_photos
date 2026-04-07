@@ -39,7 +39,7 @@ Each album exposes the following entities:
 
 ### Setting Up Your Photo Directory
 
-Create a directory for your photos and add your images to it. You can manage files via the File Editor add-on or SFTP/Samba. Supported formats: JPG, JPEG, PNG, GIF, BMP, and WEBP.
+Create a directory for your photos and add your images to it. You can manage files via the File Editor add-on or SFTP/Samba. Supported formats: JPG, JPEG, PNG, GIF, BMP, WEBP, and TIFF. HEIC/HEIF and AVIF are also supported where the required system libraries are available.
 
 Organise photos into albums by creating subdirectories. For example:
 
@@ -102,7 +102,7 @@ wallpanel:
 
 ## Notes & Limitations
 
-- Supported image formats: JPG, JPEG, PNG, GIF, BMP, and WEBP. Images larger than 20MB are skipped.
+- Supported image formats: JPG, JPEG, PNG, GIF, BMP, WEBP, and TIFF. HEIC/HEIF and AVIF are supported where the required system libraries are present. Images larger than 20MB are skipped.
 - The integration scans albums on setup — add new photos by restarting Home Assistant or reconfiguring the album.
 - The specified photos directory must already exist; the integration will not create it.
 - For best performance, keep your photo collection reasonably sized. Thousands of high-resolution photos may impact performance.

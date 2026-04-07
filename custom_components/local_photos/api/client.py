@@ -22,8 +22,30 @@ from custom_components.local_photos.const import CONF_ALBUM_ID_FAVORITES, CONF_F
 
 _LOGGER = logging.getLogger(__name__)
 
-# Supported image file extensions
-SUPPORTED_EXTENSIONS = [".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp"]
+# Supported image file extensions — always available via Pillow
+SUPPORTED_EXTENSIONS = [".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".tiff", ".tif"]
+
+# Optional HEIC/HEIF support (requires pillow-heif and libheif system library)
+try:
+    from pillow_heif import register_heif_opener  # type: ignore[import-untyped]
+
+    register_heif_opener()
+    SUPPORTED_EXTENSIONS.extend([".heic", ".heif"])
+    mimetypes.add_type("image/heic", ".heic")
+    mimetypes.add_type("image/heif", ".heif")
+    _LOGGER.debug("HEIC/HEIF support enabled via pillow-heif")
+except ImportError:
+    _LOGGER.debug("pillow-heif not available; HEIC/HEIF files will be skipped")
+
+# Optional AVIF support (requires pillow-avif-plugin or Pillow compiled with libavif)
+try:
+    import pillow_avif  # type: ignore[import-untyped] # noqa: F401
+
+    SUPPORTED_EXTENSIONS.append(".avif")
+    mimetypes.add_type("image/avif", ".avif")
+    _LOGGER.debug("AVIF support enabled via pillow-avif-plugin")
+except ImportError:
+    _LOGGER.debug("pillow-avif-plugin not available; AVIF files will be skipped")
 
 
 class LocalPhotosFilesystemError(Exception):
