@@ -1,0 +1,118 @@
+{
+  "config": {
+    "abort": {
+      "already_configured": "This album is already configured",
+      "already_in_progress": "Configuration flow is already in progress"
+    },
+    "step": {
+      "user": {
+        "title": "Configure Local Photos",
+        "description": "Enter the path to your photos directory. Each subdirectory will be available as an album.",
+        "data": {
+          "folder_path": "Photos folder path"
+        }
+      },
+      "album_select": {
+        "title": "Select Album",
+        "description": "Select which album to display.",
+        "data": {
+          "album_id": "Album"
+        }
+      }
+    },
+    "error": {
+      "directory_not_found": "The specified directory does not exist.",
+      "unknown": "Unexpected error occurred."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Local Photos Options",
+        "description": "Update the photos directory path.",
+        "data": {
+          "folder_path": "Photos folder path"
+        }
+      },
+      "album_select": {
+        "title": "Select Album",
+        "description": "Select which album to display.",
+        "data": {
+          "album_id": "Album"
+        }
+      }
+    },
+    "error": {
+      "directory_not_found": "The specified directory does not exist."
+    }
+  },
+  "entity": {
+    "camera": {
+      "album_image": {
+        "name": "Album image"
+      }
+    },
+    "sensor": {
+      "filename": {
+        "name": "Filename"
+      },
+      "creation_timestamp": {
+        "name": "Creation timestamp"
+      },
+      "media_count": {
+        "name": "Media count"
+      }
+    },
+    "select": {
+      "crop_mode": {
+        "name": "Crop mode",
+        "state": {
+          "Original": "Original",
+          "Crop": "Crop",
+          "Combine images": "Combine images"
+        }
+      },
+      "image_selection_mode": {
+        "name": "Image selection mode",
+        "state": {
+          "Random": "Random",
+          "Alphabetical order": "Alphabetical order"
+        }
+      },
+      "update_interval": {
+        "name": "Update interval",
+        "state": {
+          "Never": "Never",
+          "10 seconds": "10 seconds",
+          "20 seconds": "20 seconds",
+          "30 seconds": "30 seconds",
+          "60 seconds": "60 seconds",
+          "120 seconds": "120 seconds",
+          "300 seconds": "300 seconds"
+        }
+      },
+      "aspect_ratio": {
+        "name": "Aspect ratio",
+        "state": {
+          "16:10": "16:10",
+          "16:9": "16:9",
+          "4:3": "4:3",
+          "1:1": "1:1"
+        }
+      }
+    }
+  },
+  "issues": {
+    "directory_not_found": {
+      "title": "Photos directory not found",
+      "fix_flow": {
+        "step": {
+          "init": {
+            "title": "Reconfigure photos directory",
+            "description": "The configured photos directory no longer exists. Please reconfigure the integration with a valid directory path."
+          }
+        }
+      }
+    }
+  }
+}
