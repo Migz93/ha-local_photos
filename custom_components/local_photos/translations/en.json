@@ -67,37 +67,37 @@
       "crop_mode": {
         "name": "Crop mode",
         "state": {
-          "Original": "Original",
-          "Crop": "Crop",
-          "Combine images": "Combine images"
+          "original": "Original",
+          "crop": "Crop",
+          "combine": "Combine images"
         }
       },
       "image_selection_mode": {
         "name": "Image selection mode",
         "state": {
-          "Random": "Random",
-          "Alphabetical order": "Alphabetical order"
+          "random": "Random",
+          "alphabetical": "Alphabetical order"
         }
       },
       "update_interval": {
         "name": "Update interval",
         "state": {
-          "Never": "Never",
-          "10 seconds": "10 seconds",
-          "20 seconds": "20 seconds",
-          "30 seconds": "30 seconds",
-          "60 seconds": "60 seconds",
-          "120 seconds": "120 seconds",
-          "300 seconds": "300 seconds"
+          "never": "Never",
+          "10": "10 seconds",
+          "20": "20 seconds",
+          "30": "30 seconds",
+          "60": "60 seconds",
+          "120": "120 seconds",
+          "300": "300 seconds"
         }
       },
       "aspect_ratio": {
         "name": "Aspect ratio",
         "state": {
-          "16:10": "16:10",
-          "16:9": "16:9",
-          "4:3": "4:3",
-          "1:1": "1:1"
+          "16-10": "16:10",
+          "16-9": "16:9",
+          "4-3": "4:3",
+          "1-1": "1:1"
         }
       }
     }
