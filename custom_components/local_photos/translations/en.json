@@ -49,7 +49,7 @@
   "entity": {
     "camera": {
       "album_image": {
-        "name": "Album image"
+        "name": "Album Image"
       }
     },
     "sensor": {
@@ -57,47 +57,47 @@
         "name": "Filename"
       },
       "creation_timestamp": {
-        "name": "Creation timestamp"
+        "name": "Creation Timestamp"
       },
       "media_count": {
-        "name": "Media count"
+        "name": "Media Count"
       }
     },
     "select": {
       "crop_mode": {
-        "name": "Crop mode",
+        "name": "Crop Mode",
         "state": {
           "original": "Original",
           "crop": "Crop",
-          "combine": "Combine images"
+          "combine": "Combine Images"
         }
       },
       "image_selection_mode": {
-        "name": "Image selection mode",
+        "name": "Image Selection Mode",
         "state": {
           "random": "Random",
-          "alphabetical": "Alphabetical order"
+          "alphabetical": "Alphabetical Order"
         }
       },
       "update_interval": {
-        "name": "Update interval",
+        "name": "Update Interval",
         "state": {
           "never": "Never",
-          "10": "10 seconds",
-          "20": "20 seconds",
-          "30": "30 seconds",
-          "60": "60 seconds",
-          "120": "120 seconds",
-          "300": "300 seconds"
+          "10": "10 Seconds",
+          "20": "20 Seconds",
+          "30": "30 Seconds",
+          "60": "60 Seconds",
+          "120": "120 Seconds",
+          "300": "300 Seconds"
         }
       },
       "aspect_ratio": {
-        "name": "Aspect ratio",
+        "name": "Aspect Ratio",
         "state": {
-          "16-10": "16:10",
-          "16-9": "16:9",
-          "4-3": "4:3",
-          "1-1": "1:1"
+          "16-10": "16x10",
+          "16-9": "16x9",
+          "4-3": "4x3",
+          "1-1": "1x1"
         }
       }
     }
