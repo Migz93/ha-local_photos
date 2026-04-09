@@ -283,8 +283,13 @@ class LocalPhotosDataUpdateCoordinator(DataUpdateCoordinator):  # type: ignore[t
                     else:
                         img_resized = resize_and_crop_image(img, w, h)
                     img_byte_arr = io.BytesIO()
-                    img_format = img.format if img.format else "JPEG"
-                    img_resized.save(img_byte_arr, format=img_format, quality=95)
+                    # Camera images should be returned in a frontend-friendly
+                    # format. Returning HEIC/HEIF bytes works poorly for
+                    # standalone camera rendering, while the combined path
+                    # already normalizes to JPEG.
+                    if img_resized.mode not in ("RGB", "L"):
+                        img_resized = img_resized.convert("RGB")
+                    img_resized.save(img_byte_arr, format="JPEG", quality=95)
                     return img_byte_arr.getvalue()
 
             result = await self.hass.async_add_executor_job(read_and_process_image)
