@@ -68,8 +68,13 @@ class LocalPhotosFileName(SensorEntity):
         return self.coordinator.last_update_success and self.coordinator.current_media is not None
 
     def _read_value(self) -> None:
-        if self.coordinator.current_media is not None:
-            self._attr_native_value = self.coordinator.current_media.filename
+        media = self.coordinator.current_media
+        if media is not None:
+            secondary_media = self.coordinator.current_secondary_media
+            if secondary_media is not None:
+                self._attr_native_value = f"{media.filename} & {secondary_media.filename}"
+            else:
+                self._attr_native_value = media.filename
             self.async_write_ha_state()
 
     @callback
