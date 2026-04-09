@@ -46,7 +46,11 @@ class LocalPhotosFileName(SensorEntity):
         """Initialize the filename sensor."""
         super().__init__()
         self.coordinator = coordinator
-        self.entity_description = SensorEntityDescription(key="filename", name="Filename", icon=self._attr_icon)
+        self.entity_description = SensorEntityDescription(
+            key="filename",
+            translation_key="filename",
+            icon=self._attr_icon,
+        )
         album_id = self.coordinator.album_id
         self._attr_device_info = self.coordinator.get_device_info()
         self._attr_unique_id = f"{album_id}-filename"
@@ -96,7 +100,7 @@ class LocalPhotosCreationTimestamp(SensorEntity):
         self.coordinator = coordinator
         self.entity_description = SensorEntityDescription(
             key="creation_timestamp",
-            name="Creation timestamp",
+            translation_key="creation_timestamp",
             icon=self._attr_icon,
             device_class=SensorDeviceClass.TIMESTAMP,
         )
@@ -156,7 +160,11 @@ class LocalPhotosMediaCount(SensorEntity):
         """Initialize the media count sensor."""
         super().__init__()
         self.coordinator = coordinator
-        self.entity_description = SensorEntityDescription(key="media_count", name="Media count", icon=self._attr_icon)
+        self.entity_description = SensorEntityDescription(
+            key="media_count",
+            translation_key="media_count",
+            icon=self._attr_icon,
+        )
         album_id = self.coordinator.album_id
         self._attr_device_info = self.coordinator.get_device_info()
         self._attr_unique_id = f"{album_id}-mediacount"

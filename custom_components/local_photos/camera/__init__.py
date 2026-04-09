@@ -26,7 +26,7 @@ CAMERA_NEXT_MEDIA_SCHEMA = cv.make_entity_service_schema(
     {vol.Optional(ATTR_MODE): vol.In(SETTING_IMAGESELECTION_MODE_OPTIONS)}
 )
 
-CAMERA_TYPE = CameraEntityDescription(key="album_image", name="Album image", icon="mdi:image")
+CAMERA_TYPE = CameraEntityDescription(key="album_image", translation_key="album_image", icon="mdi:image")
 
 _LOGGER = logging.getLogger(__name__)
 

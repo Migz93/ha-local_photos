@@ -56,7 +56,7 @@ class LocalPhotosSelectCropMode(SelectEntity, RestoreEntity):
         self.coordinator = coordinator
         self.entity_description = SelectEntityDescription(
             key="crop_mode",
-            name="Crop mode",
+            translation_key="crop_mode",
             icon=self._attr_icon,
             entity_category=EntityCategory.CONFIG,
             options=SETTING_CROP_MODE_OPTIONS,
@@ -105,7 +105,7 @@ class LocalPhotosSelectImageSelectionMode(SelectEntity, RestoreEntity):
         self.coordinator = coordinator
         self.entity_description = SelectEntityDescription(
             key="image_selection_mode",
-            name="Image selection mode",
+            translation_key="image_selection_mode",
             icon=self._attr_icon,
             entity_category=EntityCategory.CONFIG,
             options=SETTING_IMAGESELECTION_MODE_OPTIONS,
@@ -154,7 +154,7 @@ class LocalPhotosSelectInterval(SelectEntity, RestoreEntity):
         self.coordinator = coordinator
         self.entity_description = SelectEntityDescription(
             key="update_interval",
-            name="Update interval",
+            translation_key="update_interval",
             icon=self._attr_icon,
             entity_category=EntityCategory.CONFIG,
             options=SETTING_INTERVAL_OPTIONS,
@@ -203,7 +203,7 @@ class LocalPhotosSelectAspectRatio(SelectEntity, RestoreEntity):
         self.coordinator = coordinator
         self.entity_description = SelectEntityDescription(
             key="aspect_ratio",
-            name="Aspect ratio",
+            translation_key="aspect_ratio",
             icon=self._attr_icon,
             entity_category=EntityCategory.CONFIG,
             options=SETTING_ASPECT_RATIO_OPTIONS,
