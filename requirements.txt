@@ -1,0 +1,10 @@
+# Runtime dependencies for the integration
+# These are installed by Home Assistant when the integration is loaded
+# See custom_components/local_photos/manifest.json for the authoritative list
+
+pillow
+pillow-avif-plugin
+pillow-heif
+
+# Note: Home Assistant core dependencies are already available
+# Only list additional packages your integration needs
