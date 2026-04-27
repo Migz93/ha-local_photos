@@ -71,6 +71,35 @@ script/hooks/
 # .env contains your project's HA_VERSION pin and other settings.
 # Both are user-owned; upstream changes would silently revert your pin or docs.
 .devcontainer/.env
+.devcontainer/post-attach.sh
+.devcontainer/devcontainer.json
+
+# ── Template sync runtime scratch ────────────────────────────
+# Created by .github/workflows/template-sync.yml during a sync run.
+# This generated file should never be committed or synced.
+.templatesyncignore.runtime
+
+# ── GitHub issue templates ───────────────────────────────────
+# These contain repository-specific duplicate-search URLs.
+.github/ISSUE_TEMPLATE/bug.yml
+.github/ISSUE_TEMPLATE/feature_request.yml
+
+# ── AI instructions and prompts ──────────────────────────────
+# These contain integration-specific names, paths, and examples.
+# Upstream changes should be cherry-picked manually and adapted.
+.github/instructions/
+.github/prompts/
+
+# ── Domain-specific helper scripts ───────────────────────────
+# These scripts contain integration-specific domains, names, paths, or local
+# bootstrap behavior. Cherry-pick useful upstream changes manually.
+script/develop
+script/hassfest
+script/release-notes
+script/setup/bootstrap
+script/test
+script/version
+script/yaml-check
 
 # ── Release management ───────────────────────────────────────
 # Release Please configuration is project-specific
