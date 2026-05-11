@@ -642,6 +642,61 @@ See `.github/copilot-instructions.md` for detailed workflow guidance.
 - For file edits, use `multi_replace_string_in_file` when making multiple changes
 - Terminal commands must always be sequential to see output before next command
 
+## Weekly Template Sync PRs
+
+This project receives weekly automated PRs titled **"chore: sync updates from integration blueprint template"** that pull upstream changes from [`jpawlowski/hacs.integration_blueprint`](https://github.com/jpawlowski/hacs.integration_blueprint).
+
+### What to ignore
+
+These PRs almost always contain mechanical name substitutions that incorrectly revert our identifiers back to the upstream template placeholders. **These are noise — not real changes:**
+
+- Any rename of `local_photos` → `ha_integration_domain`
+- Any rename of `LocalPhotos` → `IntegrationBlueprint`
+- Any rename of `Local Photos` → `Integration Blueprint`
+- Any change of `Migz93` → `jpawlowski` or our repo URL → the blueprint repo URL
+- Changes to `.devcontainer/devcontainer.json` that remove our custom `name`, `runArgs`, `workspaceMount`, `workspaceFolder`, or `mounts` entries
+- Addition of `.devcontainer/post-attach.sh` and its `postAttachCommand` hook
+- Changes to `script/setup/bootstrap` that remove the `SYSTEM_UV_BIN` workaround (see note below)
+
+### The uv workaround in `script/setup/bootstrap`
+
+We added a `SYSTEM_UV_BIN` workaround (commit `3c5f86b`) to fix a real CI issue: when the venv is wiped during an HA version change, the venv's `bin/` is still prepended to `PATH` from the earlier activation. If `uv` resolved through the now-deleted venv path, the `uv venv` recreate call would fail. Capturing the system uv path before any venv activation ensures the correct binary is always used.
+
+The upstream template does not have this fix and reverts it on every sync. **Do not accept the template's version of bootstrap — always restore ours from `main`.** This should stay until upstream addresses the root cause and we can verify the fix is equivalent to ours.
+
+### What to look for
+
+Focus only on **genuine upstream improvements**: new scripts, new config files, bug fixes, or structural changes that are not purely name substitutions.
+
+### How to handle a template sync PR
+
+When asked to review and clean up a template sync PR:
+
+1. Run `gh pr diff <number>` and read through all changes
+2. Identify the **genuine changes** to keep (new files, real fixes, structural improvements)
+3. Identify the **noise** to revert (all name/domain substitutions and devcontainer personal config changes listed above)
+4. Pull the branch, revert the noise, push to update the PR:
+
+```bash
+git fetch origin <branch-name>
+git checkout -b <branch-name> FETCH_HEAD
+
+# Restore noisy files from main (restores our identifiers)
+git checkout main -- <file1> <file2> ...
+
+# Remove any unwanted new files added by the template
+git rm <unwanted-new-file>
+
+# Commit with a clear message, then push
+git commit -m "chore: revert template placeholder substitutions"
+git push origin <branch-name>
+
+# Return to main
+git checkout main
+```
+
+The PR will then only contain the genuine upstream improvements.
+
 ## Additional Resources
 
 - [Home Assistant Developer Docs](https://developers.home-assistant.io/) - Primary reference
