@@ -1,12 +1,6 @@
 {
-  "name": "HA local_photos Dev Container",
+  "name": "HA ${localWorkspaceFolderBasename} Dev Container",
   "image": "mcr.microsoft.com/devcontainers/base:debian",
-  "runArgs": [
-    "--name",
-    "zdev-local_photos"
-  ],
-  "workspaceMount": "source=${localWorkspaceFolder},target=/workspaces/local_photos,type=bind,consistency=cached",
-  "workspaceFolder": "/workspaces/local_photos",
   // Lifecycle hooks — execution order on first creation:
   //   onCreateCommand → updateContentCommand → postCreateCommand → postStartCommand → postAttachCommand
   // On subsequent starts (container stopped/restarted):
@@ -25,6 +19,7 @@
   // Runs on every container creation — installs all dependencies.
   "postCreateCommand": "bash .devcontainer/post-create.sh",
   // Runs on every client attach — detects fresh blueprints and triggers initialization.
+  "postAttachCommand": "bash .devcontainer/post-attach.sh",
   "containerEnv": {
     // Python runtime variables — must be set for ALL Python processes, including those spawned
     // by VS Code extensions (Pylance, test runner, Ruff) that never go through our shell scripts.
@@ -49,7 +44,7 @@
     "ghcr.io/devcontainers/features/python:1": {
       "version": "3.14"
     },
-    "ghcr.io/devcontainers/features/node:1": {
+    "ghcr.io/devcontainers/features/node:2": {
       "version": "lts"
     },
     "ghcr.io/devcontainers/features/github-cli:1": {},
@@ -198,12 +193,25 @@
     }
   },
   "mounts": [
-    "source=/opt/vscode/hacs/local_photos/home,target=/home/vscode,type=bind",
-    "source=/opt/vscode/_shared/hacs/.vscode-server,target=/home/vscode/.vscode-server,type=bind",
-    "source=/opt/vscode/_shared/hacs/.cache/uv,target=/home/vscode/uv-cache,type=bind",
-    "source=/opt/vscode/_shared/hacs/.local/ha-venv,target=/home/vscode/ha-venv,type=bind",
-    "source=/home/gdadmin/.codex/auth.json,target=/home/vscode/.codex/auth.json,type=bind",
-    "source=/home/gdadmin/.claude/.credentials.json,target=/home/vscode/.claude/.credentials.json,type=bind"
+    // Named volume for HA Python venv: survives container rebuilds (but not "Rebuild and Clean Volumes").
+    // bootstrap already skips venv creation if the directory exists; uv pip install is fast for already-installed packages.
+    // Run "Dev Containers: Rebuild and Clean Volumes" after upgrading HA_VERSION to force a fresh install.
+    // Mounted directly under $HOME (not ~/.local/ha-venv) so Docker does NOT create ~/.local as root,
+    // which would race with VS Code server trying to write ~/.cache/Microsoft at container start.
+    // Ownership is fixed by onCreateCommand (Docker initializes volume mount points as root).
+    // Volume name uses ${localWorkspaceFolderBasename} so each project on the host gets its own volume.
+    "source=${localWorkspaceFolderBasename}_ha_venv,target=/home/vscode/ha-venv,type=volume",
+    // Named volume for uv package cache: avoids re-downloading packages when the venv is recreated (e.g. after HA upgrade).
+    // Mounted directly under $HOME (not ~/.cache/uv) so Docker does NOT create ~/.cache as root,
+    // which would cause EACCES when VS Code server tries to mkdir ~/.cache/Microsoft at startup.
+    // Ownership is fixed by onCreateCommand (Docker initializes volume mount points as root).
+    "source=${localWorkspaceFolderBasename}_uv_cache,target=/home/vscode/uv-cache,type=volume",
+    // Named volume for node_modules: keeps it on Container FS (not bind mount) for performance.
+    // Docker manages this volume separately from the workspace — npm ci runs fast on overlay FS.
+    "source=${localWorkspaceFolderBasename}_node_modules,target=${containerWorkspaceFolder}/node_modules,type=volume",
+    // Mount host gitconfig for local development (ignored in Codespaces)
+    // In Codespaces, GitHub automatically configures Git with your account
+    "source=${localEnv:HOME}${localEnv:USERPROFILE}/.gitconfig,target=/home/vscode/.gitconfig.host,type=bind,consistency=cached,readonly"
   ],
   "remoteUser": "vscode"
 }
