@@ -655,7 +655,6 @@ These PRs almost always contain mechanical name substitutions that incorrectly r
 - Any rename of `Local Photos` → `Integration Blueprint`
 - Any change of `Migz93` → `jpawlowski` or our repo URL → the blueprint repo URL
 - Changes to `.devcontainer/devcontainer.json` that remove our custom `name`, `runArgs`, `workspaceMount`, `workspaceFolder`, or `mounts` entries
-- Addition of `.devcontainer/post-attach.sh` and its `postAttachCommand` hook
 - Changes to `script/setup/bootstrap` that remove the `SYSTEM_UV_BIN` workaround (see note below)
 
 ### The uv workaround in `script/setup/bootstrap`
