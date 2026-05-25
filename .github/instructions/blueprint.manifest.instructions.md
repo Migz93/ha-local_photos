@@ -4,7 +4,7 @@ applyTo: "**/manifest.json"
 
 # Manifest Instructions
 
-**Applies to:** `custom_components/ha_integration_domain/manifest.json`
+**Applies to:** `custom_components/local_photos/manifest.json`
 
 ## Schema Validation
 
@@ -16,14 +16,14 @@ This schema combines Home Assistant's official manifest requirements with HACS-s
 
 ```json
 {
-  "domain": "ha_integration_domain",
-  "name": "Integration Blueprint",
-  "codeowners": ["@jpawlowski"],
+  "domain": "local_photos",
+  "name": "Local Photos",
+  "codeowners": ["@Migz93"],
   "config_flow": true,
-  "documentation": "https://github.com/jpawlowski/hacs.integration_blueprint",
+  "documentation": "https://github.com/Migz93/ha-local_photos",
   "integration_type": "device",
   "iot_class": "cloud_polling",
-  "issue_tracker": "https://github.com/jpawlowski/hacs.integration_blueprint/issues",
+  "issue_tracker": "https://github.com/Migz93/ha-local_photos/issues",
   "requirements": [],
   "version": "0.0.0"
 }
@@ -82,7 +82,7 @@ GitHub usernames with `@` prefix:
 
 ```json
 "codeowners": [
-  "@jpawlowski"
+  "@Migz93"
 ]
 ```
 
