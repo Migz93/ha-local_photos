@@ -61,9 +61,8 @@ class LocalPhotosSelectCropMode(SelectEntity, RestoreEntity):
             entity_category=EntityCategory.CONFIG,
             options=SETTING_CROP_MODE_OPTIONS,
         )
-        album_id = self.coordinator.album_id
         self._attr_device_info = self.coordinator.get_device_info()
-        self._attr_unique_id = f"{album_id}-crop-mode"
+        self._attr_unique_id = self.coordinator.get_entity_unique_id("crop-mode")
 
     @property
     def should_poll(self) -> bool:
@@ -110,9 +109,8 @@ class LocalPhotosSelectImageSelectionMode(SelectEntity, RestoreEntity):
             entity_category=EntityCategory.CONFIG,
             options=SETTING_IMAGESELECTION_MODE_OPTIONS,
         )
-        album_id = self.coordinator.album_id
         self._attr_device_info = self.coordinator.get_device_info()
-        self._attr_unique_id = f"{album_id}-image-selection-mode"
+        self._attr_unique_id = self.coordinator.get_entity_unique_id("image-selection-mode")
 
     @property
     def should_poll(self) -> bool:
@@ -159,9 +157,8 @@ class LocalPhotosSelectInterval(SelectEntity, RestoreEntity):
             entity_category=EntityCategory.CONFIG,
             options=SETTING_INTERVAL_OPTIONS,
         )
-        album_id = self.coordinator.album_id
         self._attr_device_info = self.coordinator.get_device_info()
-        self._attr_unique_id = f"{album_id}-interval"
+        self._attr_unique_id = self.coordinator.get_entity_unique_id("interval")
 
     @property
     def should_poll(self) -> bool:
@@ -208,9 +205,8 @@ class LocalPhotosSelectAspectRatio(SelectEntity, RestoreEntity):
             entity_category=EntityCategory.CONFIG,
             options=SETTING_ASPECT_RATIO_OPTIONS,
         )
-        album_id = self.coordinator.album_id
         self._attr_device_info = self.coordinator.get_device_info()
-        self._attr_unique_id = f"{album_id}-aspect-ratio"
+        self._attr_unique_id = self.coordinator.get_entity_unique_id("aspect-ratio")
 
     @property
     def should_poll(self) -> bool:

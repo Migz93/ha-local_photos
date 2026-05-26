@@ -12,6 +12,7 @@ PARALLEL_UPDATES = 1
 # Configuration keys
 CONF_FOLDER_PATH = "folder_path"
 CONF_ALBUM_ID = "album_id"
+CONF_UNIQUE_ID_PREFIX = "unique_id_prefix"
 CONF_ALBUM_ID_FAVORITES = "ALL"
 CONF_WRITEMETADATA = "attribute_metadata"
 WRITEMETADATA_DEFAULT_OPTION = False

@@ -51,9 +51,8 @@ class LocalPhotosFileName(SensorEntity):
             translation_key="filename",
             icon=self._attr_icon,
         )
-        album_id = self.coordinator.album_id
         self._attr_device_info = self.coordinator.get_device_info()
-        self._attr_unique_id = f"{album_id}-filename"
+        self._attr_unique_id = self.coordinator.get_entity_unique_id("filename")
 
     async def async_added_to_hass(self) -> None:
         """Register coordinator listener."""
@@ -104,9 +103,8 @@ class LocalPhotosCreationTimestamp(SensorEntity):
             icon=self._attr_icon,
             device_class=SensorDeviceClass.TIMESTAMP,
         )
-        album_id = self.coordinator.album_id
         self._attr_device_info = self.coordinator.get_device_info()
-        self._attr_unique_id = f"{album_id}-creation-timestamp"
+        self._attr_unique_id = self.coordinator.get_entity_unique_id("creation-timestamp")
 
     async def async_added_to_hass(self) -> None:
         """Register coordinator listener."""
@@ -165,9 +163,8 @@ class LocalPhotosMediaCount(SensorEntity):
             translation_key="media_count",
             icon=self._attr_icon,
         )
-        album_id = self.coordinator.album_id
         self._attr_device_info = self.coordinator.get_device_info()
-        self._attr_unique_id = f"{album_id}-mediacount"
+        self._attr_unique_id = self.coordinator.get_entity_unique_id("mediacount")
         self._attr_native_value = 0
         self._attr_extra_state_attributes = {}
 

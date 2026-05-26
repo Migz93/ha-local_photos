@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from hashlib import sha256
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -10,6 +11,7 @@ from custom_components.local_photos.const import (
     CONF_ALBUM_ID,
     CONF_ALBUM_ID_FAVORITES,
     CONF_FOLDER_PATH,
+    CONF_UNIQUE_ID_PREFIX,
     CONF_WRITEMETADATA,
     DOMAIN,
 )
@@ -28,6 +30,20 @@ class LocalPhotosConfigFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
     VERSION = 2
 
     folder_path: str
+
+    def _album_path(self, folder_path: str, album_id: str) -> str:
+        """Return the canonical filesystem path represented by an album selection."""
+        path = Path(folder_path)
+        if not path.is_absolute():
+            path = Path(self.hass.config.config_dir) / path
+        if album_id != CONF_ALBUM_ID_FAVORITES:
+            path /= album_id
+        return str(path.resolve())
+
+    def _unique_id_prefix(self, album_id: str) -> str:
+        """Return a stable, non-sensitive prefix for entity unique IDs."""
+        album_path = self._album_path(self.folder_path, album_id)
+        return sha256(album_path.encode()).hexdigest()[:12]
 
     @staticmethod
     def async_get_options_flow(
@@ -79,16 +95,26 @@ class LocalPhotosConfigFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
             )
 
         album_id = user_input[CONF_ALBUM_ID]
+        album_path = self._album_path(self.folder_path, album_id)
 
-        # Check for duplicate entry
+        # Check for duplicate entry by the actual selected album path, not only
+        # by album_id, because different root folders can both select "ALL".
         for entry in self._async_current_entries():
-            if entry.options.get(CONF_ALBUM_ID, []) == [album_id]:
+            entry_album_ids = entry.options.get(CONF_ALBUM_ID, [])
+            if not isinstance(entry_album_ids, list) or not entry_album_ids:
+                continue
+            entry_album_path = self._album_path(
+                entry.options.get(CONF_FOLDER_PATH, ""),
+                entry_album_ids[0],
+            )
+            if entry_album_path == album_path:
                 return self.async_abort(reason="already_configured")
 
         title = "Local Photos All" if album_id == CONF_ALBUM_ID_FAVORITES else f"Local Photos {album_id}"
         options = {
             CONF_ALBUM_ID: [album_id],
             CONF_FOLDER_PATH: self.folder_path,
+            CONF_UNIQUE_ID_PREFIX: self._unique_id_prefix(album_id),
             CONF_WRITEMETADATA: True,
         }
         return self.async_create_entry(title=title, data={}, options=options)

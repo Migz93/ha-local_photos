@@ -15,6 +15,7 @@ from custom_components.local_photos.api import Album, LocalPhotosManager, MediaI
 from custom_components.local_photos.const import (
     ASPECT_RATIO_VALUES,
     CONF_ALBUM_ID_FAVORITES,
+    CONF_UNIQUE_ID_PREFIX,
     DOMAIN,
     MANUFACTURER,
     SETTING_ASPECT_RATIO_DEFAULT_OPTION,
@@ -119,6 +120,19 @@ class LocalPhotosDataUpdateCoordinator(DataUpdateCoordinator):  # type: ignore[t
             name=device_name,
             configuration_url=None,
         )
+
+    def get_entity_unique_id(self, suffix: str | None = None) -> str:
+        """Return a unique ID for entities belonging to this album.
+
+        Older config entries did not store a prefix, so keep their legacy unique
+        IDs stable. New entries include a path-based prefix to allow multiple
+        configured folders with the same album_id, such as "ALL".
+        """
+        prefix = self._config.options.get(CONF_UNIQUE_ID_PREFIX)
+        base = f"{prefix}-{self.album_id}" if isinstance(prefix, str) and prefix else self.album_id
+        if suffix is None:
+            return base
+        return f"{base}-{suffix}"
 
     def set_crop_mode(self, crop_mode: str) -> None:
         """Set the crop mode and clear the image cache."""

@@ -145,6 +145,5 @@ class LocalPhotosAlbumCamera(LocalPhotosBaseCamera):
         """Initialize the album camera."""
         super().__init__(coordinator)
         self._attr_name = None  # Use the device name as the entity name
-        album_id = self.coordinator.album_id
-        self._attr_unique_id = f"{album_id}"
+        self._attr_unique_id = self.coordinator.get_entity_unique_id()
         self._attr_device_info = self.coordinator.get_device_info()
