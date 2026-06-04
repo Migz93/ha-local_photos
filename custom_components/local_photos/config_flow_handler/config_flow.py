@@ -103,17 +103,16 @@ class LocalPhotosConfigFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                 errors={"base": "no_albums_selected"},
             )
 
-        # Check for duplicate entry by the actual selected album path, not only
-        # by album_id, because different root folders can both select "ALL".
+        # Only block an exact duplicate — same folder path and same set of album IDs.
+        selected_paths = sorted(self._album_path(self.folder_path, aid) for aid in album_ids)
         for entry in self._async_current_entries():
             entry_folder = entry.options.get(CONF_FOLDER_PATH, "")
             entry_album_ids = entry.options.get(CONF_ALBUM_ID, [])
             if not isinstance(entry_album_ids, list):
                 continue
-            existing_paths = {self._album_path(entry_folder, eid) for eid in entry_album_ids}
-            for new_id in album_ids:
-                if self._album_path(self.folder_path, new_id) in existing_paths:
-                    return self.async_abort(reason="already_configured")
+            entry_paths = sorted(self._album_path(entry_folder, eid) for eid in entry_album_ids)
+            if entry_paths == selected_paths:
+                return self.async_abort(reason="already_configured")
 
         if len(album_ids) == 1:
             title = "Local Photos All" if album_ids[0] == CONF_ALBUM_ID_FAVORITES else f"Local Photos {album_ids[0]}"
