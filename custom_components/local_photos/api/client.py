@@ -154,6 +154,7 @@ class LocalPhotosManager:
             self.photos_dir = str(Path(hass.config.config_dir) / "www" / "photos")
 
         self.albums: dict[str, Album] = {}
+        self._merged_sources: dict[str, list[str]] = {}
 
     async def scan_albums(self) -> None:
         """Scan for local photo albums (folders).
@@ -183,6 +184,11 @@ class LocalPhotosManager:
         except OSError as ex:
             _LOGGER.error("Error scanning for albums: %s", ex)
 
+    def register_merged_album(self, source_album_ids: list[str], merged_id: str, title: str) -> None:
+        """Register a virtual album that combines media from multiple source albums."""
+        self._merged_sources[merged_id] = source_album_ids
+        self.albums[merged_id] = Album(id=merged_id, title=title, path="")
+
     def get_albums(self) -> list[Album]:
         """Get all available albums."""
         return list(self.albums.values())
@@ -193,6 +199,9 @@ class LocalPhotosManager:
 
     async def get_media_items(self, album_id: str) -> list[MediaItem]:
         """Get all media items in an album, sorted alphabetically."""
+        if album_id in self._merged_sources:
+            return await self._get_merged_media_items(album_id)
+
         album = self.get_album(album_id)
         if not album:
             _LOGGER.error("Album not found: %s", album_id)
@@ -231,6 +240,21 @@ class LocalPhotosManager:
 
         album.media_items_count = len(media_items)
         media_items.sort(key=lambda item: item.filename.lower())
+        return media_items
+
+    async def _get_merged_media_items(self, merged_id: str) -> list[MediaItem]:
+        """Return deduplicated media items from all source albums of a merged album."""
+        seen_paths: set[str] = set()
+        media_items: list[MediaItem] = []
+        for source_id in self._merged_sources[merged_id]:
+            for item in await self.get_media_items(source_id):
+                if item.path not in seen_paths:
+                    seen_paths.add(item.path)
+                    media_items.append(item)
+        media_items.sort(key=lambda item: item.filename.lower())
+        album = self.albums.get(merged_id)
+        if album:
+            album.media_items_count = len(media_items)
         return media_items
 
     async def get_media_item(self, album_id: str, media_id: str) -> MediaItem | None:

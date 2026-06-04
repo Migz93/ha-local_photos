@@ -7,7 +7,6 @@ import logging
 import voluptuous as vol
 
 from custom_components.local_photos.const import (
-    CONF_ALBUM_ID,
     CONF_WRITEMETADATA,
     SETTING_IMAGESELECTION_MODE_OPTIONS,
     WRITEMETADATA_DEFAULT_OPTION,
@@ -39,10 +38,9 @@ async def async_setup_entry(
     """Set up Local Photos camera entities."""
     coordinator_manager = entry.runtime_data.coordinator_manager
 
-    album_ids = entry.options.get(CONF_ALBUM_ID, [])
     entities = []
-    for album_id in album_ids:
-        coordinator = await coordinator_manager.get_coordinator(album_id)
+    for coordinator_id in coordinator_manager.get_active_coordinator_ids():
+        coordinator = await coordinator_manager.get_coordinator(coordinator_id)
         entities.append(LocalPhotosAlbumCamera(coordinator))
 
     platform = entity_platform.async_get_current_platform()

@@ -6,7 +6,7 @@ import datetime
 import logging
 from pathlib import Path
 
-from custom_components.local_photos.const import CONF_ALBUM_ID, PARALLEL_UPDATES as PARALLEL_UPDATES
+from custom_components.local_photos.const import PARALLEL_UPDATES as PARALLEL_UPDATES
 from custom_components.local_photos.coordinator import LocalPhotosDataUpdateCoordinator
 from custom_components.local_photos.data import LocalPhotosConfigEntry
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, SensorEntityDescription, SensorStateClass
@@ -24,10 +24,9 @@ async def async_setup_entry(
     """Set up Local Photos sensor entities."""
     coordinator_manager = entry.runtime_data.coordinator_manager
 
-    album_ids = entry.options.get(CONF_ALBUM_ID, [])
     entities = []
-    for album_id in album_ids:
-        coordinator = await coordinator_manager.get_coordinator(album_id)
+    for coordinator_id in coordinator_manager.get_active_coordinator_ids():
+        coordinator = await coordinator_manager.get_coordinator(coordinator_id)
         entities.append(LocalPhotosMediaCount(coordinator))
         entities.append(LocalPhotosFileName(coordinator))
         entities.append(LocalPhotosCreationTimestamp(coordinator))

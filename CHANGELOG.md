@@ -9,10 +9,9 @@
 
 ## [2.3.0](https://github.com/Migz93/ha-local_photos/compare/v2.2.0...v2.3.0) (2026-06-04)
 
-
 ### Features
 
-* allow multiple album folders per camera entity ([f6dfd14](https://github.com/Migz93/ha-local_photos/commit/f6dfd1463f644ace41fe21910f64c4e11d418573))
+- allow multiple album folders per camera entity ([f6dfd14](https://github.com/Migz93/ha-local_photos/commit/f6dfd1463f644ace41fe21910f64c4e11d418573))
 
 ## [2.2.0](https://github.com/Migz93/ha-local_photos/compare/v2.1.0...v2.2.0) (2026-05-26)
 

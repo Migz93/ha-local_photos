@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from custom_components.local_photos.const import (
-    CONF_ALBUM_ID,
     PARALLEL_UPDATES as PARALLEL_UPDATES,
     SETTING_ASPECT_RATIO_DEFAULT_OPTION,
     SETTING_ASPECT_RATIO_OPTIONS,
@@ -31,10 +30,9 @@ async def async_setup_entry(
     """Set up Local Photos select entities."""
     coordinator_manager = entry.runtime_data.coordinator_manager
 
-    album_ids = entry.options.get(CONF_ALBUM_ID, [])
     entities = []
-    for album_id in album_ids:
-        coordinator = await coordinator_manager.get_coordinator(album_id)
+    for coordinator_id in coordinator_manager.get_active_coordinator_ids():
+        coordinator = await coordinator_manager.get_coordinator(coordinator_id)
         entities.append(LocalPhotosSelectCropMode(coordinator))
         entities.append(LocalPhotosSelectImageSelectionMode(coordinator))
         entities.append(LocalPhotosSelectInterval(coordinator))

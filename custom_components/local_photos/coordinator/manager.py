@@ -10,7 +10,7 @@ import logging
 from typing import TYPE_CHECKING
 
 from custom_components.local_photos.api import LocalPhotosManager
-from custom_components.local_photos.const import CONF_ALBUM_ID
+from custom_components.local_photos.const import CONF_ALBUM_ID, CONF_UNIQUE_ID_PREFIX
 
 from .base import LocalPhotosDataUpdateCoordinator
 
@@ -49,9 +49,30 @@ class CoordinatorManager:
             self._photos_manager = LocalPhotosManager(self.hass, self._config.options)
             await self._photos_manager.scan_albums()
 
-        album_ids = self._config.options.get(CONF_ALBUM_ID, [])
-        for album_id in album_ids:
-            await self.get_coordinator(album_id)
+        for coordinator_id in self.get_active_coordinator_ids():
+            await self.get_coordinator(coordinator_id)
+
+    def get_active_coordinator_ids(self) -> list[str]:
+        """Return the coordinator IDs that should have entities created for them.
+
+        For single-album configs this is the album ID itself. For multi-album
+        configs a single merged virtual album is used so that all selected
+        folders feed one camera entity instead of one per album.
+        """
+        album_ids: list[str] = self._config.options.get(CONF_ALBUM_ID, [])
+        if len(album_ids) <= 1:
+            return list(album_ids)
+
+        merged_id: str | None = self._config.options.get(CONF_UNIQUE_ID_PREFIX)
+        if not merged_id:
+            return list(album_ids)
+
+        if self._photos_manager is not None:
+            entry_title: str = self._config.title or ""
+            album_title = entry_title.removeprefix("Local Photos ") or merged_id
+            self._photos_manager.register_merged_album(album_ids, merged_id, album_title)
+
+        return [merged_id]
 
     async def get_coordinator(self, album_id: str) -> LocalPhotosDataUpdateCoordinator:
         """Get or create a coordinator for the given album_id."""
