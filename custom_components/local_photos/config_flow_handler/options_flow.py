@@ -17,6 +17,7 @@ class LocalPhotosOptionsFlow(config_entries.OptionsFlow):
     """Handle options flow for local_photos."""
 
     folder_path: str
+    _album_options: dict[str, str]
 
     async def async_step_init(
         self,
@@ -55,21 +56,26 @@ class LocalPhotosOptionsFlow(config_entries.OptionsFlow):
         """Handle the album selection options step."""
         if user_input is None:
             album_options = await validate_folder_path(self.hass, self.folder_path)
+            self._album_options = album_options
             current_album_ids = self.config_entry.options.get(CONF_ALBUM_ID, [CONF_ALBUM_ID_FAVORITES])
-            current_album = (
-                current_album_ids[0]
-                if isinstance(current_album_ids, list) and current_album_ids
-                else CONF_ALBUM_ID_FAVORITES
-            )
+            if not isinstance(current_album_ids, list) or not current_album_ids:
+                current_album_ids = [CONF_ALBUM_ID_FAVORITES]
             return self.async_show_form(
                 step_id="album_select",
-                data_schema=get_options_album_schema(album_options, current_album),
+                data_schema=get_options_album_schema(album_options, current_album_ids),
             )
 
-        album_id = user_input[CONF_ALBUM_ID]
+        album_ids: list[str] = user_input[CONF_ALBUM_ID]
+        if not album_ids:
+            return self.async_show_form(
+                step_id="album_select",
+                data_schema=get_options_album_schema(self._album_options),
+                errors={"base": "no_albums_selected"},
+            )
+
         updated_options = {
             **self.config_entry.options,
-            CONF_ALBUM_ID: [album_id],
+            CONF_ALBUM_ID: album_ids,
             CONF_FOLDER_PATH: self.folder_path,
         }
         return self.async_create_entry(title="", data=updated_options)

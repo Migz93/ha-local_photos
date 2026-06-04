@@ -13,15 +13,16 @@
         }
       },
       "album_select": {
-        "title": "Select Album",
-        "description": "Select which album to display.",
+        "title": "Select Albums",
+        "description": "Select one or more albums to include in this camera entity.",
         "data": {
-          "album_id": "Album"
+          "album_id": "Albums"
         }
       }
     },
     "error": {
       "directory_not_found": "The specified directory does not exist.",
+      "no_albums_selected": "Please select at least one album.",
       "unknown": "Unexpected error occurred."
     }
   },
@@ -35,15 +36,16 @@
         }
       },
       "album_select": {
-        "title": "Select Album",
-        "description": "Select which album to display.",
+        "title": "Select Albums",
+        "description": "Select one or more albums to include in this camera entity.",
         "data": {
-          "album_id": "Album"
+          "album_id": "Albums"
         }
       }
     },
     "error": {
-      "directory_not_found": "The specified directory does not exist."
+      "directory_not_found": "The specified directory does not exist.",
+      "no_albums_selected": "Please select at least one album."
     }
   },
   "entity": {

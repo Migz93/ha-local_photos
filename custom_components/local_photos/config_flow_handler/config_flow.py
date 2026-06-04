@@ -30,6 +30,7 @@ class LocalPhotosConfigFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
     VERSION = 2
 
     folder_path: str
+    _album_options: dict[str, str]
 
     def _album_path(self, folder_path: str, album_id: str) -> str:
         """Return the canonical filesystem path represented by an album selection."""
@@ -40,10 +41,10 @@ class LocalPhotosConfigFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
             path /= album_id
         return str(path.resolve())
 
-    def _unique_id_prefix(self, album_id: str) -> str:
+    def _unique_id_prefix(self, album_ids: list[str]) -> str:
         """Return a stable, non-sensitive prefix for entity unique IDs."""
-        album_path = self._album_path(self.folder_path, album_id)
-        return sha256(album_path.encode()).hexdigest()[:12]
+        combined = ",".join(sorted(self._album_path(self.folder_path, aid) for aid in album_ids))
+        return sha256(combined.encode()).hexdigest()[:12]
 
     @staticmethod
     def async_get_options_flow(
@@ -88,33 +89,42 @@ class LocalPhotosConfigFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
     ) -> config_entries.ConfigFlowResult:
         """Handle the album selection step."""
         if user_input is None:
-            album_options = await validate_folder_path(self.hass, self.folder_path)
+            self._album_options = await validate_folder_path(self.hass, self.folder_path)
             return self.async_show_form(
                 step_id="album_select",
-                data_schema=get_album_select_schema(album_options),
+                data_schema=get_album_select_schema(self._album_options),
             )
 
-        album_id = user_input[CONF_ALBUM_ID]
-        album_path = self._album_path(self.folder_path, album_id)
+        album_ids: list[str] = user_input[CONF_ALBUM_ID]
+        if not album_ids:
+            return self.async_show_form(
+                step_id="album_select",
+                data_schema=get_album_select_schema(self._album_options),
+                errors={"base": "no_albums_selected"},
+            )
 
         # Check for duplicate entry by the actual selected album path, not only
         # by album_id, because different root folders can both select "ALL".
         for entry in self._async_current_entries():
+            entry_folder = entry.options.get(CONF_FOLDER_PATH, "")
             entry_album_ids = entry.options.get(CONF_ALBUM_ID, [])
-            if not isinstance(entry_album_ids, list) or not entry_album_ids:
+            if not isinstance(entry_album_ids, list):
                 continue
-            entry_album_path = self._album_path(
-                entry.options.get(CONF_FOLDER_PATH, ""),
-                entry_album_ids[0],
-            )
-            if entry_album_path == album_path:
-                return self.async_abort(reason="already_configured")
+            existing_paths = {self._album_path(entry_folder, eid) for eid in entry_album_ids}
+            for new_id in album_ids:
+                if self._album_path(self.folder_path, new_id) in existing_paths:
+                    return self.async_abort(reason="already_configured")
 
-        title = "Local Photos All" if album_id == CONF_ALBUM_ID_FAVORITES else f"Local Photos {album_id}"
+        if len(album_ids) == 1:
+            title = "Local Photos All" if album_ids[0] == CONF_ALBUM_ID_FAVORITES else f"Local Photos {album_ids[0]}"
+        else:
+            first = "All" if album_ids[0] == CONF_ALBUM_ID_FAVORITES else album_ids[0]
+            title = f"Local Photos {first} + {len(album_ids) - 1} more"
+
         options = {
-            CONF_ALBUM_ID: [album_id],
+            CONF_ALBUM_ID: album_ids,
             CONF_FOLDER_PATH: self.folder_path,
-            CONF_UNIQUE_ID_PREFIX: self._unique_id_prefix(album_id),
+            CONF_UNIQUE_ID_PREFIX: self._unique_id_prefix(album_ids),
             CONF_WRITEMETADATA: True,
         }
         return self.async_create_entry(title=title, data={}, options=options)

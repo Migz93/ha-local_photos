@@ -5,6 +5,7 @@ from __future__ import annotations
 import voluptuous as vol
 
 from custom_components.local_photos.const import CONF_ALBUM_ID, CONF_FOLDER_PATH
+import homeassistant.helpers.config_validation as cv
 
 
 def get_user_schema(suggested_folder_path: str = "") -> vol.Schema:
@@ -18,12 +19,12 @@ def get_user_schema(suggested_folder_path: str = "") -> vol.Schema:
 
 def get_album_select_schema(
     album_options: dict[str, str],
-    default_album: str = "ALL",
+    default_albums: list[str] | None = None,
 ) -> vol.Schema:
     """Return the schema for the album selection step."""
     return vol.Schema(
         {
-            vol.Required(CONF_ALBUM_ID, default=default_album): vol.In(album_options),
+            vol.Required(CONF_ALBUM_ID, default=default_albums or ["ALL"]): cv.multi_select(album_options),
         }
     )
 
