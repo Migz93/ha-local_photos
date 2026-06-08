@@ -2,17 +2,15 @@
 
 ## [2.3.2](https://github.com/Migz93/ha-local_photos/compare/v2.3.1...v2.3.2) (2026-06-04)
 
-
 ### Bug Fixes
 
-* multi-album config now creates a single merged camera entity ([add5413](https://github.com/Migz93/ha-local_photos/commit/add54135b7a6ff449d9025b444f4a0dd1c93de91))
+- multi-album config now creates a single merged camera entity ([add5413](https://github.com/Migz93/ha-local_photos/commit/add54135b7a6ff449d9025b444f4a0dd1c93de91))
 
 ## [2.3.1](https://github.com/Migz93/ha-local_photos/compare/v2.3.0...v2.3.1) (2026-06-04)
 
-
 ### Bug Fixes
 
-* allow the same album folder to appear in multiple camera entities ([f08673c](https://github.com/Migz93/ha-local_photos/commit/f08673c0c8beee5d8795c9aead15ca28f0400c2d))
+- allow the same album folder to appear in multiple camera entities ([f08673c](https://github.com/Migz93/ha-local_photos/commit/f08673c0c8beee5d8795c9aead15ca28f0400c2d))
 
 ## [2.3.0](https://github.com/Migz93/ha-local_photos/compare/v2.2.0...v2.3.0) (2026-06-04)
 
