@@ -26,7 +26,7 @@ run_hook "yaml-check" "pre"
 
 log_header "Checking YAML with yamllint"
 yamllint -c .yamllint.yml \
-    custom_components/ha_integration_domain/ \
+    custom_components/local_photos/ \
     schemas/yaml/ \
     .github/ \
     .pre-commit-config.yaml \

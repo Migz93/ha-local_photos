@@ -57,6 +57,12 @@ if ! command -v uv >/dev/null 2>&1; then
     pipx install uv
 fi
 
+# Capture system uv path before venv activation changes PATH.
+# The version-change block below may delete venv contents (including any
+# uv installed as a pip package inside it) and must recreate the venv using
+# the system-level binary, not the venv-local one.
+SYSTEM_UV_BIN="$(command -v uv)"
+
 log_header "Checking for Python virtual environment"
 
 # Determine venv location based on environment
@@ -223,7 +229,7 @@ if [[ -f "$HA_VERSION_MARKER" ]]; then
         # Use find instead of rm -rf: the path may be a named Docker volume mount point
         # which cannot be removed itself — only its contents can be deleted.
         find "$VENV_PATH" -mindepth 1 -delete
-        uv venv "$VENV_PATH"
+        "$SYSTEM_UV_BIN" venv "$VENV_PATH"
         # shellcheck source=/dev/null
         source "$VENV_PATH/bin/activate"
     fi
