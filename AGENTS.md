@@ -657,6 +657,20 @@ These PRs almost always contain mechanical name substitutions that incorrectly r
 - Changes to `.devcontainer/devcontainer.json` that remove our custom `name`, `runArgs`, `workspaceMount`, `workspaceFolder`, or `mounts` entries
 - Changes to `script/setup/bootstrap` that remove the `SYSTEM_UV_BIN` workaround (see note below)
 
+### Template-owned vs project-owned instruction files
+
+The `.github/instructions/blueprint.*.instructions.md` files are template-owned and may sync generic upstream placeholders such as `{domain}`, `{ClassPrefix}`, `<your_domain>`, or `your_domain`. Do not treat those placeholder changes as noise by default.
+
+Project-owned instruction and prompt files must remain repo-specific and should not be overwritten by template placeholder substitutions:
+
+- `AGENTS.md`
+- `CLAUDE.md`
+- `GEMINI.md`
+- `.github/copilot-instructions.md`
+- `.github/prompts/*.prompt.md`
+
+Template-sync cleanup should revert name/domain substitutions outside template-owned blueprint instruction files, plus devcontainer personal config regressions and bootstrap workaround regressions.
+
 ### The uv workaround in `script/setup/bootstrap`
 
 We added a `SYSTEM_UV_BIN` workaround (commit `3c5f86b`) to fix a real CI issue: when the venv is wiped during an HA version change, the venv's `bin/` is still prepended to `PATH` from the earlier activation. If `uv` resolved through the now-deleted venv path, the `uv venv` recreate call would fail. Capturing the system uv path before any venv activation ensures the correct binary is always used.
