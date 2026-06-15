@@ -19,7 +19,7 @@ If not provided, ask for:
 
 ### 1. Create Platform Directory Structure
 
-**Directory:** `custom_components/{domain}/[platform]/`
+**Directory:** `custom_components/local_photos/[platform]/`
 
 **Files to create:**
 
@@ -29,7 +29,7 @@ If not provided, ask for:
 ### 2. Platform `__init__.py` Template
 
 ```python
-"""[Platform] platform for [Integration Title]."""
+"""[Platform] platform for Local Photos."""
 
 from __future__ import annotations
 
@@ -38,10 +38,10 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .entity import {ClassPrefix}Entity
-from .[entity_file] import {ClassPrefix}[EntityName]
+from .entity import LocalPhotosEntity
+from .[entity_file] import LocalPhotos[EntityName]
 from .const import DOMAIN
-from .coordinator import {ClassPrefix}DataUpdateCoordinator
+from .coordinator import LocalPhotosDataUpdateCoordinator
 
 
 async def async_setup_entry(
@@ -50,13 +50,13 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up [platform] platform."""
-    coordinator: {ClassPrefix}DataUpdateCoordinator = hass.data[DOMAIN][
+    coordinator: LocalPhotosDataUpdateCoordinator = hass.data[DOMAIN][
         entry.entry_id
     ]
 
     async_add_entities(
         [
-            {ClassPrefix}[EntityName](coordinator, entry),
+            LocalPhotos[EntityName](coordinator, entry),
             # Add more entities here
         ]
     )
@@ -65,7 +65,7 @@ async def async_setup_entry(
 ### 3. Entity Implementation Template
 
 ```python
-"""[Entity description] for [Integration Title]."""
+"""[Entity description] for Local Photos."""
 
 from __future__ import annotations
 
@@ -78,12 +78,12 @@ from homeassistant.components.[platform] import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import callback
 
-from .coordinator import {ClassPrefix}DataUpdateCoordinator
-from .entity import {ClassPrefix}Entity
+from .coordinator import LocalPhotosDataUpdateCoordinator
+from .entity import LocalPhotosEntity
 
 
-class {ClassPrefix}[EntityName](
-    {ClassPrefix}Entity,
+class LocalPhotos[EntityName](
+    LocalPhotosEntity,
     [PlatformEntityClass],
 ):
     """Representation of [entity description]."""
@@ -100,7 +100,7 @@ class {ClassPrefix}[EntityName](
 
     def __init__(
         self,
-        coordinator: {ClassPrefix}DataUpdateCoordinator,
+        coordinator: LocalPhotosDataUpdateCoordinator,
         entry: ConfigEntry,
     ) -> None:
         """Initialize the [entity]."""
@@ -129,7 +129,7 @@ class {ClassPrefix}[EntityName](
 
 ### 4. Update Manifest
 
-Add platform to `custom_components/{domain}/manifest.json`:
+Add platform to `custom_components/local_photos/manifest.json`:
 
 ```json
 {
@@ -236,15 +236,15 @@ script/develop         # Start Home Assistant for testing
 ```python
 from homeassistant.helpers.device_registry import DeviceInfo
 
-class {ClassPrefix}[EntityName](
-    {ClassPrefix}Entity,
+class LocalPhotos[EntityName](
+    LocalPhotosEntity,
     [PlatformEntityClass],
 ):
     """Entity with device grouping."""
 
     def __init__(
         self,
-        coordinator: {ClassPrefix}DataUpdateCoordinator,
+        coordinator: LocalPhotosDataUpdateCoordinator,
         entry: ConfigEntry,
     ) -> None:
         """Initialize entity."""
@@ -291,7 +291,7 @@ async def async_press(self) -> None:
 ## Validation Checklist
 
 - [ ] Platform directory created with `__init__.py`
-- [ ] Entity class inherits from both `{ClassPrefix}Entity` and platform class
+- [ ] Entity class inherits from both `LocalPhotosEntity` and platform class
 - [ ] `_attr_has_entity_name = True` set (MANDATORY for new integrations)
 - [ ] Entity uses `translation_key` instead of hardcoded `name`
 - [ ] Unique ID set correctly
@@ -307,10 +307,10 @@ async def async_press(self) -> None:
 
 ## Integration Context
 
-- **Domain:** `{domain}`
-- **Class prefix:** `{ClassPrefix}`
-- **Base entity:** `{ClassPrefix}Entity` in `entity/base.py`
-- **Coordinator:** `{ClassPrefix}DataUpdateCoordinator`
+- **Domain:** `local_photos`
+- **Class prefix:** `LocalPhotos`
+- **Base entity:** `LocalPhotosEntity` in `entity/base.py`
+- **Coordinator:** `LocalPhotosDataUpdateCoordinator`
 
 Follow patterns from existing platforms in the integration for consistency.
 

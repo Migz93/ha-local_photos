@@ -63,6 +63,7 @@ AGENTS.md
 CLAUDE.md
 GEMINI.md
 .github/copilot-instructions.md
+.github/prompts/*.prompt.md
 
 # ── GitHub project settings ──────────────────────────────────
 # Ownership, funding, and other per-project settings
