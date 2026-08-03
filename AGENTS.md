@@ -655,7 +655,6 @@ These PRs almost always contain mechanical name substitutions that incorrectly r
 - Any rename of `Local Photos` → `Integration Blueprint`
 - Any change of `Migz93` → `jpawlowski` or our repo URL → the blueprint repo URL
 - Changes to `.devcontainer/devcontainer.json` that remove our custom `name`, `runArgs`, `workspaceMount`, `workspaceFolder`, or `mounts` entries
-- Changes to `script/setup/bootstrap` that remove the `SYSTEM_UV_BIN` workaround (see note below)
 
 ### Template-managed vs project-owned AI guidance
 
@@ -668,13 +667,7 @@ Project-owned instruction files must stay repo-specific:
 - `GEMINI.md`
 - `.github/copilot-instructions.md`
 
-Template-sync cleanup should revert name/domain/repository substitutions outside template-managed AI guidance files. Also revert devcontainer personal configuration regressions and `script/setup/bootstrap` changes that remove the `SYSTEM_UV_BIN` workaround.
-
-### The uv workaround in `script/setup/bootstrap`
-
-We added a `SYSTEM_UV_BIN` workaround (commit `3c5f86b`) to fix a real CI issue: when the venv is wiped during an HA version change, the venv's `bin/` is still prepended to `PATH` from the earlier activation. If `uv` resolved through the now-deleted venv path, the `uv venv` recreate call would fail. Capturing the system uv path before any venv activation ensures the correct binary is always used.
-
-The upstream template does not have this fix and reverts it on every sync. **Do not accept the template's version of bootstrap — always restore ours from `main`.** This should stay until upstream addresses the root cause and we can verify the fix is equivalent to ours.
+Template-sync cleanup should revert name/domain/repository substitutions outside template-managed AI guidance files, and devcontainer personal configuration regressions.
 
 ### What to look for
 
