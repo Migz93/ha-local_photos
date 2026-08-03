@@ -669,12 +669,6 @@ Project-owned instruction files must stay repo-specific:
 
 Template-sync cleanup should revert name/domain/repository substitutions outside template-managed AI guidance files, and devcontainer personal configuration regressions.
 
-### The uv workaround in `script/setup/bootstrap` (resolved)
-
-We added a `SYSTEM_UV_BIN` workaround (commit `3c5f86b`) to fix a real CI issue: when the venv is wiped during an HA version change, the venv's `bin/` is still prepended to `PATH` from the earlier activation. If `uv` resolved through the now-deleted venv path, the `uv venv` recreate call would fail. Capturing the system uv path before any venv activation ensures the correct binary is always used.
-
-As of the `chore/template_sync_7f88a59` sync, upstream fixed the same root cause with an equivalent mechanism: `deactivate` (drops the venv off `PATH`) plus `hash -r` (clears bash's cached command lookup) before recreating the venv, with a fallback to reinstall `uv` if it's missing entirely. We verified this is equivalent to our workaround and accepted upstream's version — `SYSTEM_UV_BIN` is gone from `script/setup/bootstrap` as of this sync. Future sync PRs should accept upstream's `script/setup/bootstrap` changes normally; this is no longer something to revert.
-
 ### What to look for
 
 Focus only on **genuine upstream improvements**: new scripts, new config files, bug fixes, or structural changes that are not purely name substitutions.
