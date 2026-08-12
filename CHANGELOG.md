@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.3.3](https://github.com/Migz93/ha-local_photos/compare/v2.3.2...v2.3.3) (2026-08-12)
+
+
+### Bug Fixes
+
+* suppress combine images argument lint ([a1032a7](https://github.com/Migz93/ha-local_photos/commit/a1032a784c1f794f2ddc2b94e3710124ade22319))
+
 ## [2.3.2](https://github.com/Migz93/ha-local_photos/compare/v2.3.1...v2.3.2) (2026-06-04)
 
 ### Bug Fixes
