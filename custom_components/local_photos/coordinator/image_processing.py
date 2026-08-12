@@ -111,7 +111,7 @@ def calculate_cut_loss(target: tuple[float, float], src: tuple[float, float]) ->
     return 1 - ((target[0] * target[1]) / ((src[0] * multiplier) * (src[1] * multiplier)))
 
 
-def combine_images(
+def combine_images(  # noqa: PLR0917
     primary_data: bytes,
     secondary_data: bytes,
     width: int,
