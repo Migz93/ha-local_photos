@@ -1,6 +1,10 @@
 // Please keep this file (mostly!) in sync with settings in .devcontainer/devcontainer.json
 {
   "chat.promptFiles": true,
+  // AGENTS.md is the single always-loaded instruction file; there is no
+  // .github/copilot-instructions.md to fall back on, so pin this on.
+  "chat.useAgentsMdFile": true,
+  // No chat.agentSkillsLocations needed: VS Code discovers .agents/skills/ by default.
   "editor.tabSize": 4,
   "editor.formatOnPaste": false,
   "editor.formatOnSave": true,
@@ -45,6 +49,9 @@
     "**/.env": false,
     "**/.env.*": false,
     "**/.git/**": false,
+    ".agents/hooks/**": false,
+    ".claude/settings.json": false,
+    ".codex/hooks.json": false,
     ".github/workflows/**": false,
     ".github/actions/**": false,
     "release-please-config.json": false,
@@ -85,7 +92,7 @@
   },
 
   "github.copilot.chat.commitMessageGeneration.instructions": [
-    { "file": ".github/instructions/blueprint.commit-message.instructions.md" }
+    { "file": ".agents/instructions/blueprint.commit-message.instructions.md" }
   ],
 
   "json.schemas": [
