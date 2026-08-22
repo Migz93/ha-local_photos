@@ -20,20 +20,28 @@ on:
     - cron: "0 7 * * 1"
   workflow_dispatch:
 
+# No workflow-level access; the job below grants only what the sync needs.
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
 jobs:
   template-sync:
+    name: Sync from blueprint template
     # Skip when running inside the template repository itself
     if: github.repository != 'jpawlowski/hacs.integration_blueprint'
     runs-on: ubuntu-latest
     env:
       TEMPLATE_SYNC_TARGET_PAT: ${{ secrets.TEMPLATE_SYNC_TARGET_PAT }}
     permissions:
-      contents: write
-      pull-requests: write
+      contents: write # Needed to push the sync branch.
+      pull-requests: write # Needed to open/update the sync pull request.
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           # Use PAT when configured; otherwise fall back to github.token.
           # persist-credentials=false is recommended by actions-template-sync
@@ -61,7 +69,7 @@ jobs:
           fi
 
       - name: Sync from blueprint template
-        uses: AndreasAugustin/actions-template-sync@v2
+        uses: AndreasAugustin/actions-template-sync@8a0f668b83c32a0f673353086d74f12b8853d4f5 # v2.5.3
         with:
           # Needed only for changes in .github/workflows/*.yml.
           # Falls back to github.token for normal syncs.

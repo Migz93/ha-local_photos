@@ -39,7 +39,6 @@ class LocalPhotosFileName(SensorEntity):
 
     coordinator: LocalPhotosDataUpdateCoordinator
     _attr_has_entity_name = True
-    _attr_icon = "mdi:text-short"
 
     def __init__(self, coordinator: LocalPhotosDataUpdateCoordinator) -> None:
         """Initialize the filename sensor."""
@@ -48,7 +47,6 @@ class LocalPhotosFileName(SensorEntity):
         self.entity_description = SensorEntityDescription(
             key="filename",
             translation_key="filename",
-            icon=self._attr_icon,
         )
         self._attr_device_info = self.coordinator.get_device_info()
         self._attr_unique_id = self.coordinator.get_entity_unique_id("filename")
@@ -90,7 +88,6 @@ class LocalPhotosCreationTimestamp(SensorEntity):
 
     coordinator: LocalPhotosDataUpdateCoordinator
     _attr_has_entity_name = True
-    _attr_icon = "mdi:calendar"
 
     def __init__(self, coordinator: LocalPhotosDataUpdateCoordinator) -> None:
         """Initialize the creation timestamp sensor."""
@@ -99,7 +96,6 @@ class LocalPhotosCreationTimestamp(SensorEntity):
         self.entity_description = SensorEntityDescription(
             key="creation_timestamp",
             translation_key="creation_timestamp",
-            icon=self._attr_icon,
             device_class=SensorDeviceClass.TIMESTAMP,
         )
         self._attr_device_info = self.coordinator.get_device_info()
@@ -150,7 +146,6 @@ class LocalPhotosMediaCount(SensorEntity):
 
     coordinator: LocalPhotosDataUpdateCoordinator
     _attr_has_entity_name = True
-    _attr_icon = "mdi:counter"
     _attr_state_class = SensorStateClass.TOTAL
 
     def __init__(self, coordinator: LocalPhotosDataUpdateCoordinator) -> None:
@@ -160,7 +155,6 @@ class LocalPhotosMediaCount(SensorEntity):
         self.entity_description = SensorEntityDescription(
             key="media_count",
             translation_key="media_count",
-            icon=self._attr_icon,
         )
         self._attr_device_info = self.coordinator.get_device_info()
         self._attr_unique_id = self.coordinator.get_entity_unique_id("mediacount")

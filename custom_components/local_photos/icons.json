@@ -1,0 +1,34 @@
+{
+  "entity": {
+    "camera": {
+      "album_image": {
+        "default": "mdi:image"
+      }
+    },
+    "select": {
+      "crop_mode": {
+        "default": "mdi:crop"
+      },
+      "image_selection_mode": {
+        "default": "mdi:page-next-outline"
+      },
+      "update_interval": {
+        "default": "mdi:timer-cog"
+      },
+      "aspect_ratio": {
+        "default": "mdi:aspect-ratio"
+      }
+    },
+    "sensor": {
+      "filename": {
+        "default": "mdi:text-short"
+      },
+      "creation_timestamp": {
+        "default": "mdi:calendar"
+      },
+      "media_count": {
+        "default": "mdi:counter"
+      }
+    }
+  }
+}

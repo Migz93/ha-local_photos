@@ -1,5 +1,13 @@
 # AI Agent Instructions
 
+<!-- repo-role:start -->
+
+This repository is an initialised Home Assistant integration generated from the
+[jpawlowski/hacs.integration_blueprint](https://github.com/jpawlowski/hacs.integration_blueprint) template. It is not the
+blueprint template itself.
+
+<!-- repo-role:end -->
+
 This document provides guidance for AI coding agents working on this Home Assistant custom integration project.
 
 ## Project Overview
