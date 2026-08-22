@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.3.4](https://github.com/Migz93/ha-local_photos/compare/v2.3.3...v2.3.4) (2026-08-22)
+
+
+### Maintenance
+
+* force release ([e951b71](https://github.com/Migz93/ha-local_photos/commit/e951b71d674f2621d9d51a9fde502d178f9ec7f9))
+
 ## [2.3.3](https://github.com/Migz93/ha-local_photos/compare/v2.3.2...v2.3.3) (2026-08-12)
 
 
