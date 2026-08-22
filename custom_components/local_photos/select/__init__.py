@@ -46,7 +46,6 @@ class LocalPhotosSelectCropMode(SelectEntity, RestoreEntity):
 
     coordinator: LocalPhotosDataUpdateCoordinator
     _attr_has_entity_name = True
-    _attr_icon = "mdi:crop"
 
     def __init__(self, coordinator: LocalPhotosDataUpdateCoordinator) -> None:
         """Initialize the crop mode select."""
@@ -55,7 +54,6 @@ class LocalPhotosSelectCropMode(SelectEntity, RestoreEntity):
         self.entity_description = SelectEntityDescription(
             key="crop_mode",
             translation_key="crop_mode",
-            icon=self._attr_icon,
             entity_category=EntityCategory.CONFIG,
             options=SETTING_CROP_MODE_OPTIONS,
         )
@@ -94,7 +92,6 @@ class LocalPhotosSelectImageSelectionMode(SelectEntity, RestoreEntity):
 
     coordinator: LocalPhotosDataUpdateCoordinator
     _attr_has_entity_name = True
-    _attr_icon = "mdi:page-next-outline"
 
     def __init__(self, coordinator: LocalPhotosDataUpdateCoordinator) -> None:
         """Initialize the image selection mode select."""
@@ -103,7 +100,6 @@ class LocalPhotosSelectImageSelectionMode(SelectEntity, RestoreEntity):
         self.entity_description = SelectEntityDescription(
             key="image_selection_mode",
             translation_key="image_selection_mode",
-            icon=self._attr_icon,
             entity_category=EntityCategory.CONFIG,
             options=SETTING_IMAGESELECTION_MODE_OPTIONS,
         )
@@ -142,7 +138,6 @@ class LocalPhotosSelectInterval(SelectEntity, RestoreEntity):
 
     coordinator: LocalPhotosDataUpdateCoordinator
     _attr_has_entity_name = True
-    _attr_icon = "mdi:timer-cog"
 
     def __init__(self, coordinator: LocalPhotosDataUpdateCoordinator) -> None:
         """Initialize the update interval select."""
@@ -151,7 +146,6 @@ class LocalPhotosSelectInterval(SelectEntity, RestoreEntity):
         self.entity_description = SelectEntityDescription(
             key="update_interval",
             translation_key="update_interval",
-            icon=self._attr_icon,
             entity_category=EntityCategory.CONFIG,
             options=SETTING_INTERVAL_OPTIONS,
         )
@@ -190,7 +184,6 @@ class LocalPhotosSelectAspectRatio(SelectEntity, RestoreEntity):
 
     coordinator: LocalPhotosDataUpdateCoordinator
     _attr_has_entity_name = True
-    _attr_icon = "mdi:aspect-ratio"
 
     def __init__(self, coordinator: LocalPhotosDataUpdateCoordinator) -> None:
         """Initialize the aspect ratio select."""
@@ -199,7 +192,6 @@ class LocalPhotosSelectAspectRatio(SelectEntity, RestoreEntity):
         self.entity_description = SelectEntityDescription(
             key="aspect_ratio",
             translation_key="aspect_ratio",
-            icon=self._attr_icon,
             entity_category=EntityCategory.CONFIG,
             options=SETTING_ASPECT_RATIO_OPTIONS,
         )
