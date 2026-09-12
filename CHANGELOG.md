@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.3.5](https://github.com/Migz93/ha-local_photos/compare/v2.3.4...v2.3.5) (2026-09-12)
+
+
+### Bug Fixes
+
+* **coordinator:** prevent combined image request failures ([#31](https://github.com/Migz93/ha-local_photos/issues/31)) ([c23f458](https://github.com/Migz93/ha-local_photos/commit/c23f45881df86b23f9ffd328f727d92219b1dfa2)), closes [#30](https://github.com/Migz93/ha-local_photos/issues/30)
+
 ## [2.3.4](https://github.com/Migz93/ha-local_photos/compare/v2.3.3...v2.3.4) (2026-08-22)
 
 
