@@ -4,15 +4,31 @@ from __future__ import annotations
 
 import voluptuous as vol
 
-from custom_components.local_photos.const import CONF_ALBUM_ID, CONF_FOLDER_PATH
+from custom_components.local_photos.const import (
+    CONF_ALBUM_ID,
+    CONF_FOLDER_PATH,
+    CONF_MAXIMUM_FILE_SIZE,
+    SETTING_MAXIMUM_FILE_SIZE_DEFAULT_OPTION,
+    SETTING_MAXIMUM_FILE_SIZE_OPTIONS,
+)
+from homeassistant.helpers import selector
 import homeassistant.helpers.config_validation as cv
 
 
-def get_options_folder_schema(current_folder_path: str = "") -> vol.Schema:
+def get_options_folder_schema(
+    current_folder_path: str = "",
+    current_maximum_file_size: str = SETTING_MAXIMUM_FILE_SIZE_DEFAULT_OPTION,
+) -> vol.Schema:
     """Return the schema for the options folder path step."""
     return vol.Schema(
         {
             vol.Required(CONF_FOLDER_PATH, default=current_folder_path): str,
+            vol.Required(CONF_MAXIMUM_FILE_SIZE, default=current_maximum_file_size): selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=SETTING_MAXIMUM_FILE_SIZE_OPTIONS,
+                    translation_key=CONF_MAXIMUM_FILE_SIZE,
+                )
+            ),
         }
     )
 

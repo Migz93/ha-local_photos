@@ -30,9 +30,13 @@
     "step": {
       "init": {
         "title": "Local Photos Options",
-        "description": "Update the photos directory path.",
+        "description": "Update the photos directory path and maximum image file size.",
         "data": {
-          "folder_path": "Photos folder path"
+          "folder_path": "Photos folder path",
+          "maximum_file_size": "Maximum image file size (MiB)"
+        },
+        "data_description": {
+          "maximum_file_size": "Files larger than this are skipped."
         }
       },
       "album_select": {
@@ -46,6 +50,15 @@
     "error": {
       "directory_not_found": "The specified directory does not exist.",
       "no_albums_selected": "Please select at least one album."
+    }
+  },
+  "selector": {
+    "maximum_file_size": {
+      "options": {
+        "20": "20 MiB",
+        "50": "50 MiB",
+        "100": "100 MiB"
+      }
     }
   },
   "entity": {

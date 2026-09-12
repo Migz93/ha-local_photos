@@ -11,9 +11,11 @@ from custom_components.local_photos.const import (
     CONF_ALBUM_ID,
     CONF_ALBUM_ID_FAVORITES,
     CONF_FOLDER_PATH,
+    CONF_MAXIMUM_FILE_SIZE,
     CONF_UNIQUE_ID_PREFIX,
     CONF_WRITEMETADATA,
     DOMAIN,
+    SETTING_MAXIMUM_FILE_SIZE_DEFAULT_OPTION,
 )
 from homeassistant import config_entries
 
@@ -125,6 +127,7 @@ class LocalPhotosConfigFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
             CONF_FOLDER_PATH: self.folder_path,
             CONF_UNIQUE_ID_PREFIX: self._unique_id_prefix(album_ids),
             CONF_WRITEMETADATA: True,
+            CONF_MAXIMUM_FILE_SIZE: SETTING_MAXIMUM_FILE_SIZE_DEFAULT_OPTION,
         }
         return self.async_create_entry(title=title, data={}, options=options)
 

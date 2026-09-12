@@ -18,7 +18,12 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
 
-from custom_components.local_photos.const import CONF_ALBUM_ID_FAVORITES, CONF_FOLDER_PATH
+from custom_components.local_photos.const import (
+    CONF_ALBUM_ID_FAVORITES,
+    CONF_FOLDER_PATH,
+    CONF_MAXIMUM_FILE_SIZE,
+    SETTING_MAXIMUM_FILE_SIZE_DEFAULT_OPTION,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -155,6 +160,11 @@ class LocalPhotosManager:
 
         self.albums: dict[str, Album] = {}
         self._merged_sources: dict[str, list[str]] = {}
+        configured_file_size = config.get(CONF_MAXIMUM_FILE_SIZE, SETTING_MAXIMUM_FILE_SIZE_DEFAULT_OPTION)
+        try:
+            self.maximum_file_size_bytes = int(configured_file_size) * 1024 * 1024
+        except TypeError, ValueError:
+            self.maximum_file_size_bytes = int(SETTING_MAXIMUM_FILE_SIZE_DEFAULT_OPTION) * 1024 * 1024
 
     async def scan_albums(self) -> None:
         """Scan for local photo albums (folders).
@@ -208,6 +218,7 @@ class LocalPhotosManager:
             return []
 
         media_items: list[MediaItem] = []
+        oversized_file_count = 0
         all_album_id = self.config.get(CONF_ALBUM_ID_FAVORITES, "ALL")
 
         if album_id == all_album_id:
@@ -222,23 +233,36 @@ class LocalPhotosManager:
 
             file_paths = await self.hass.async_add_executor_job(walk_directory)
             for file, file_path in file_paths:
-                is_valid = await self.hass.async_add_executor_job(self._is_valid_image, file_path)
+                is_valid, is_oversized = await self.hass.async_add_executor_job(self._is_valid_image, file_path)
+                oversized_file_count += is_oversized
                 if is_valid:
                     media_items.append(MediaItem(id=file, filename=file, path=file_path))
         else:
             try:
                 album_path = Path(album.path)
-                dir_files = await self.hass.async_add_executor_job(list, album_path.iterdir())
+
+                def list_directory() -> list[Path]:
+                    return list(album_path.iterdir())
+
+                dir_files = await self.hass.async_add_executor_job(list_directory)
                 for item in dir_files:
                     is_file = await self.hass.async_add_executor_job(item.is_file)
                     if is_file:
-                        is_valid = await self.hass.async_add_executor_job(self._is_valid_image, str(item))
+                        is_valid, is_oversized = await self.hass.async_add_executor_job(self._is_valid_image, str(item))
+                        oversized_file_count += is_oversized
                         if is_valid:
                             media_items.append(MediaItem(id=item.name, filename=item.name, path=str(item)))
             except OSError as ex:
                 _LOGGER.error("Error getting media items for album %s: %s", album_id, ex)
 
         album.media_items_count = len(media_items)
+        if oversized_file_count:
+            _LOGGER.warning(
+                "Skipped %d files larger than %d MiB in album %s",
+                oversized_file_count,
+                self.maximum_file_size_bytes // (1024 * 1024),
+                album_id,
+            )
         media_items.sort(key=lambda item: item.filename.lower())
         return media_items
 
@@ -287,23 +311,27 @@ class LocalPhotosManager:
             return media_items[(current_index + 1) % len(media_items)]
         return media_items[0]
 
-    def _is_valid_image(self, file_path: str) -> bool:
-        """Check if a file is a valid image (synchronous, run in executor)."""
+    def _is_valid_image(self, file_path: str) -> tuple[bool, bool]:
+        """Check if a file is a valid image, returning whether it exceeded the size limit."""
         p = Path(file_path)
         if p.suffix.lower() not in SUPPORTED_EXTENSIONS:
-            return False
+            return False, False
         try:
             if not p.is_file():
-                return False
+                return False, False
             file_size = p.stat().st_size
-            if file_size > 20 * 1024 * 1024:
-                _LOGGER.warning("File too large (>20MB): %s", file_path)
-                return False
+            if file_size > self.maximum_file_size_bytes:
+                _LOGGER.debug(
+                    "Skipping file larger than configured maximum (%s MiB): %s",
+                    self.maximum_file_size_bytes // (1024 * 1024),
+                    file_path,
+                )
+                return False, True
             mime_type, _ = mimetypes.guess_type(file_path)
             if not mime_type or not mime_type.startswith("image/"):
-                return False
+                return False, False
         except OSError as ex:
             _LOGGER.error("Error checking image file %s: %s", file_path, ex)
-            return False
+            return False, False
         else:
-            return True
+            return True, False

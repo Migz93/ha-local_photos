@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from datetime import datetime
 import io
 import logging
@@ -59,6 +60,7 @@ class LocalPhotosDataUpdateCoordinator(DataUpdateCoordinator):  # type: ignore[t
     current_media_primary: MediaItem | None = None
     current_media_secondary: MediaItem | None = None
     current_media_cache: dict[str, bytes]
+    _secondary_media_selection_attempted: bool
 
     current_media_selected_timestamp: datetime
 
@@ -85,6 +87,8 @@ class LocalPhotosDataUpdateCoordinator(DataUpdateCoordinator):  # type: ignore[t
         self._config = config
         self.album_id = album_id
         self.current_media_cache = {}
+        self._secondary_media_selection_lock = asyncio.Lock()
+        self._secondary_media_selection_attempted = False
         self.current_media_selected_timestamp = datetime.fromtimestamp(0)
         self.crop_mode = SETTING_CROP_MODE_DEFAULT_OPTION
         self.image_selection_mode = SETTING_IMAGESELECTION_MODE_DEFAULT_OPTION
@@ -172,9 +176,11 @@ class LocalPhotosDataUpdateCoordinator(DataUpdateCoordinator):  # type: ignore[t
         try:
             self.current_media_selected_timestamp = datetime.now()
             media = await self._get_media_by_id(media_id)
-            self.current_media_primary = media
-            self.current_media_secondary = None
-            self.current_media_cache = {}
+            async with self._secondary_media_selection_lock:
+                self.current_media_primary = media
+                self.current_media_secondary = None
+                self._secondary_media_selection_attempted = False
+                self.current_media_cache = {}
         except Exception as err:
             _LOGGER.error("Error setting current media: %s", err)
             raise UpdateFailed(f"Error setting current media: {err}") from err
@@ -318,48 +324,67 @@ class LocalPhotosDataUpdateCoordinator(DataUpdateCoordinator):  # type: ignore[t
     async def _get_combined_media_data(self, width: int, height: int) -> bytes | None:
         """Attempt to combine two orientation-matched images into one frame."""
         requested_dimensions = (float(width), float(height))
-        media_dimensions = await self._get_media_dimensions()
-        if media_dimensions is None:
-            return None
 
-        media_is_portrait = is_portrait(media_dimensions)
-        if is_portrait(requested_dimensions) is media_is_portrait:
-            return None
+        async def get_combination_basis() -> tuple[bool, tuple[float, float]] | None:
+            media_dimensions = await self._get_media_dimensions()
+            if media_dimensions is None:
+                return None
 
-        combined_dims = calculate_combined_image_dimensions(requested_dimensions, media_dimensions)
-        cut_loss_single = calculate_cut_loss(requested_dimensions, media_dimensions)
-        cut_loss_combined = calculate_cut_loss(combined_dims, media_dimensions)
-        if cut_loss_single < cut_loss_combined:
+            media_is_portrait = is_portrait(media_dimensions)
+            if is_portrait(requested_dimensions) is media_is_portrait:
+                return None
+
+            combined_dims = calculate_combined_image_dimensions(requested_dimensions, media_dimensions)
+            cut_loss_single = calculate_cut_loss(requested_dimensions, media_dimensions)
+            cut_loss_combined = calculate_cut_loss(combined_dims, media_dimensions)
+            if cut_loss_single < cut_loss_combined:
+                return None
+            return media_is_portrait, combined_dims
+
+        combination_basis = await get_combination_basis()
+        if combination_basis is None:
             return None
+        media_is_portrait, combined_dims = combination_basis
+
+        if self.current_media_secondary is None and not self._secondary_media_selection_attempted:
+            async with self._secondary_media_selection_lock:
+                # Recalculate while locked so the secondary matches the current primary.
+                combination_basis = await get_combination_basis()
+                if combination_basis is None:
+                    return None
+                media_is_portrait, combined_dims = combination_basis
+
+                if self.current_media_secondary is None and not self._secondary_media_selection_attempted:
+                    try:
+                        all_media = await self._photos_manager.get_media_items(self.album_id)
+                        current_id = self.current_media_id()
+                        similar_orientation_media: list[MediaItem] = []
+
+                        for media_item in all_media:
+                            if media_item.id == current_id:
+                                continue
+                            try:
+                                item_path = media_item.path
+
+                                def get_item_dimensions(path: str) -> tuple[int, int]:
+                                    with PILImage.open(path) as img:
+                                        return img.size  # type: ignore[return-value]
+
+                                item_dimensions = await self.hass.async_add_executor_job(get_item_dimensions, item_path)
+                                if is_portrait(item_dimensions) == media_is_portrait:
+                                    similar_orientation_media.append(media_item)
+                            except Exception:  # noqa: BLE001
+                                continue
+
+                        if similar_orientation_media:
+                            self.current_media_secondary = random.choice(similar_orientation_media)
+                    except Exception as err:  # noqa: BLE001
+                        _LOGGER.error("Error finding secondary image: %s", err)
+                    finally:
+                        self._secondary_media_selection_attempted = True
 
         if self.current_media_secondary is None:
-            try:
-                all_media = await self._photos_manager.get_media_items(self.album_id)
-                current_id = self.current_media_id()
-                similar_orientation_media: list[MediaItem] = []
-
-                for media_item in all_media:
-                    if media_item.id == current_id:
-                        continue
-                    try:
-                        item_path = media_item.path
-
-                        def get_item_dimensions(path: str) -> tuple[int, int]:
-                            with PILImage.open(path) as img:
-                                return img.size  # type: ignore[return-value]
-
-                        item_dimensions = await self.hass.async_add_executor_job(get_item_dimensions, item_path)
-                        if is_portrait(item_dimensions) == media_is_portrait:
-                            similar_orientation_media.append(media_item)
-                    except Exception:  # noqa: BLE001
-                        continue
-
-                if not similar_orientation_media:
-                    return None
-                self.current_media_secondary = random.choice(similar_orientation_media)
-            except Exception as err:  # noqa: BLE001
-                _LOGGER.error("Error finding secondary image: %s", err)
-                return None
+            return None
 
         try:
             if self.current_media_primary is None:
