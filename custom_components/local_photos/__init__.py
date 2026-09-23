@@ -11,9 +11,23 @@ from homeassistant.helpers.device_registry import DeviceEntry
 from homeassistant.loader import async_get_loaded_integration
 
 from .api import LocalPhotosDirectoryNotFoundError, LocalPhotosManager
-from .const import CONF_ALBUM_ID, DOMAIN, LOGGER
+from .const import (
+    CONF_ALBUM_ID,
+    CONF_ALBUM_ID_FAVORITES,
+    CONF_MAXIMUM_FILE_SIZE,
+    CONFIG_ENTRY_MINOR_VERSION,
+    CONFIG_ENTRY_VERSION,
+    DOMAIN,
+    LOGGER,
+    SETTING_MAXIMUM_FILE_SIZE_20,
+    SETTING_MAXIMUM_FILE_SIZE_50,
+    SETTING_MAXIMUM_FILE_SIZE_100,
+    SETTING_MAXIMUM_FILE_SIZE_200,
+    SETTING_MAXIMUM_FILE_SIZE_DEFAULT_OPTION,
+)
 from .coordinator import CoordinatorManager
 from .data import LocalPhotosData
+from .repairs import async_update_no_usable_photos_issue
 from .service_actions import async_setup_services
 
 if TYPE_CHECKING:
@@ -45,6 +59,14 @@ async def async_setup_entry(
     except LocalPhotosDirectoryNotFoundError as err:
         raise ConfigEntryNotReady(str(err)) from err
 
+    selected_albums = entry.options.get(CONF_ALBUM_ID, [CONF_ALBUM_ID_FAVORITES])
+    has_usable_photos = False
+    for album_id in selected_albums:
+        if await manager.get_media_items(album_id):
+            has_usable_photos = True
+            break
+    async_update_no_usable_photos_issue(hass, entry.entry_id, has_usable_photos)
+
     coordinator_manager = CoordinatorManager(hass, entry, manager)
     await coordinator_manager.initialize()
 
@@ -65,6 +87,7 @@ async def async_unload_entry(
     entry: LocalPhotosConfigEntry,
 ) -> bool:
     """Unload a config entry."""
+    await entry.runtime_data.coordinator_manager.async_shutdown()
     return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
 
@@ -80,16 +103,35 @@ async def async_migrate_entry(
     hass: HomeAssistant,
     config_entry: ConfigEntry,
 ) -> bool:
-    """Migrate config entry from v1 to v2.
+    """Migrate old entries and raise the minimum source-size guard."""
+    if config_entry.version > CONFIG_ENTRY_VERSION:
+        return False
 
-    v1 → v2: No data format change (everything was already in options).
-    Just bump the version number.
-    """
     LOGGER.debug("Migrating from version %s", config_entry.version)
 
-    if config_entry.version == 1:
-        hass.config_entries.async_update_entry(config_entry, version=2)
-        LOGGER.info("Migration to version 2 successful")
+    options = dict(config_entry.options)
+    configured_limit = str(options.get(CONF_MAXIMUM_FILE_SIZE, SETTING_MAXIMUM_FILE_SIZE_DEFAULT_OPTION))
+    if CONF_MAXIMUM_FILE_SIZE not in options or configured_limit == SETTING_MAXIMUM_FILE_SIZE_20:
+        options[CONF_MAXIMUM_FILE_SIZE] = SETTING_MAXIMUM_FILE_SIZE_50
+    elif configured_limit not in {
+        SETTING_MAXIMUM_FILE_SIZE_50,
+        SETTING_MAXIMUM_FILE_SIZE_100,
+        SETTING_MAXIMUM_FILE_SIZE_200,
+    }:
+        options[CONF_MAXIMUM_FILE_SIZE] = SETTING_MAXIMUM_FILE_SIZE_DEFAULT_OPTION
+
+    if (
+        config_entry.version != CONFIG_ENTRY_VERSION
+        or config_entry.minor_version < CONFIG_ENTRY_MINOR_VERSION
+        or options != config_entry.options
+    ):
+        hass.config_entries.async_update_entry(
+            config_entry,
+            options=options,
+            version=CONFIG_ENTRY_VERSION,
+            minor_version=CONFIG_ENTRY_MINOR_VERSION,
+        )
+        LOGGER.info("Migrated Local Photos entry source-size limit")
 
     return True
 

@@ -58,12 +58,13 @@ To add another album, add the integration again and select a different album.
 
 ## Options
 
-| Setting             | Options                        | Description                          |
-| ------------------- | ------------------------------ | ------------------------------------ |
-| **Crop mode**       | Original, Crop, Combine images | How images are fitted to the display |
-| **Aspect ratio**    | 16:10, 16:9, 4:3, 1:1          | Target output dimensions             |
-| **Image selection** | Random, Alphabetical order     | How the next image is picked         |
-| **Update interval** | 10s – 300s, Never              | How often the image changes          |
+| Setting               | Options                        | Description                          |
+| --------------------- | ------------------------------ | ------------------------------------ |
+| **Crop mode**         | Original, Crop, Combine images | How images are fitted to the display |
+| **Aspect ratio**      | 16:10, 16:9, 4:3, 1:1          | Target output dimensions             |
+| **Image selection**   | Random, Alphabetical order     | How the next image is picked         |
+| **Update interval**   | 10s – 300s, Never              | How often the image changes          |
+| **Maximum file size** | 50 MiB, 100 MiB, 200 MiB       | Skip unusually large source files    |
 
 ### Crop Modes
 
@@ -101,8 +102,10 @@ wallpanel:
 
 ## Notes & Limitations
 
-- Supported image formats: JPG, JPEG, PNG, GIF, BMP, WEBP, and TIFF. HEIC/HEIF and AVIF are supported where the required system libraries are present. Images larger than 20MB are skipped.
-- The integration scans albums on setup — add new photos by restarting Home Assistant or reconfiguring the album.
+- Supported image formats: JPG, JPEG, PNG, GIF, BMP, WEBP, and TIFF. HEIC/HEIF and AVIF are supported when their Pillow codecs are available. Camera output is always JPEG for frontend compatibility.
+- The default maximum source file size is 50 MiB; choose 100 MiB or 200 MiB in integration options for larger originals. The integration also applies internal decoded-image safeguards.
+- The integration catalogs albums on setup — add new photos by restarting Home Assistant or reconfiguring the album. It prepares one next image in the background, so a slow or skipped file does not interrupt the currently displayed image.
+- To troubleshoot skipped files, enable Home Assistant debug logging for `custom_components.local_photos`; individual skipped-file reasons are not logged at normal levels.
 - The specified photos directory must already exist; the integration will not create it.
 - For best performance, keep your photo collection reasonably sized. Thousands of high-resolution photos may impact performance.
 

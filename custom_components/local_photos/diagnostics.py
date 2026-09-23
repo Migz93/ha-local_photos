@@ -25,6 +25,7 @@ async def async_get_config_entry_diagnostics(
     """Return diagnostics for a config entry."""
     coordinator_manager = entry.runtime_data.coordinator_manager
     integration = entry.runtime_data.integration
+    manager = entry.runtime_data.manager
 
     device_reg = dr.async_get(hass)
     entity_reg = er.async_get(hass)
@@ -49,6 +50,7 @@ async def async_get_config_entry_diagnostics(
             "last_update_success": coordinator.last_update_success,
             "current_media": coordinator.current_media_primary.filename if coordinator.current_media_primary else None,
             "media_count": coordinator.album.media_items_count if coordinator.album else 0,
+            "has_prepared_frame": coordinator.current_media is not None,
         }
 
     integration_info = {
@@ -60,6 +62,7 @@ async def async_get_config_entry_diagnostics(
     entry_info = {
         "entry_id": entry.entry_id,
         "version": entry.version,
+        "minor_version": entry.minor_version,
         "domain": entry.domain,
         "title": entry.title,
         "state": str(entry.state),
@@ -70,5 +73,9 @@ async def async_get_config_entry_diagnostics(
         "entry": entry_info,
         "integration": integration_info,
         "coordinators": coordinator_info,
+        "catalog": {
+            "skipped_source_count": manager.skipped_count,
+            "album_count": len(manager.albums),
+        },
         "devices": device_info,
     }
