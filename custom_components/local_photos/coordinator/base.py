@@ -1,27 +1,25 @@
-"""Per-album DataUpdateCoordinator for local_photos."""
+"""Per-album coordinator with scheduled, look-ahead photo rendering."""
 
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime
-import io
+from dataclasses import dataclass
+from datetime import datetime, timedelta
 import logging
-from pathlib import Path
 import random
 from typing import TYPE_CHECKING, Any
 
-from PIL import Image as PILImage
-
-from custom_components.local_photos.api import Album, LocalPhotosManager, MediaItem
+from custom_components.local_photos.api import LocalPhotosManager, MediaItem
 from custom_components.local_photos.const import (
     ASPECT_RATIO_VALUES,
     CONF_ALBUM_ID_FAVORITES,
     CONF_UNIQUE_ID_PREFIX,
     DOMAIN,
     MANUFACTURER,
+    MAX_OUTPUT_LONG_EDGE,
+    MAX_RENDER_CACHE_BYTES,
     SETTING_ASPECT_RATIO_DEFAULT_OPTION,
     SETTING_CROP_MODE_COMBINED,
-    SETTING_CROP_MODE_CROP,
     SETTING_CROP_MODE_DEFAULT_OPTION,
     SETTING_CROP_MODE_ORIGINAL,
     SETTING_IMAGESELECTION_MODE_ALPHABETICAL,
@@ -29,18 +27,12 @@ from custom_components.local_photos.const import (
     SETTING_INTERVAL_DEFAULT_OPTION,
     SETTING_INTERVAL_MAP,
 )
+from homeassistant.core import CALLBACK_TYPE, callback
 from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .image_processing import (
-    apply_exif_orientation,
-    calculate_combined_image_dimensions,
-    calculate_cut_loss,
-    combine_images,
-    is_portrait,
-    resize_and_crop_image,
-    resize_to_fit,
-)
+from .image_processing import is_portrait, render_combined, render_single
 
 if TYPE_CHECKING:
     from homeassistant.config_entries import ConfigEntry
@@ -49,25 +41,17 @@ if TYPE_CHECKING:
 _LOGGER = logging.getLogger(__name__)
 
 
-class LocalPhotosDataUpdateCoordinator(DataUpdateCoordinator):  # type: ignore[type-arg]
-    """Coordinates data retrieval and image processing for a single album."""
+@dataclass(frozen=True)
+class PreparedFrame:
+    """A fully rendered frame ready to be served by the camera."""
 
-    _photos_manager: LocalPhotosManager
-    _config: ConfigEntry
+    primary: MediaItem
+    secondary: MediaItem | None
+    image: bytes
 
-    album: Album | None = None
-    album_id: str
-    current_media_primary: MediaItem | None = None
-    current_media_secondary: MediaItem | None = None
-    current_media_cache: dict[str, bytes]
-    _secondary_media_selection_attempted: bool
 
-    current_media_selected_timestamp: datetime
-
-    crop_mode: str
-    image_selection_mode: str
-    interval: str
-    aspect_ratio: str
+class LocalPhotosDataUpdateCoordinator(DataUpdateCoordinator[bool]):
+    """Coordinate a catalogued album and one-frame look-ahead renderer."""
 
     def __init__(
         self,
@@ -76,368 +60,308 @@ class LocalPhotosDataUpdateCoordinator(DataUpdateCoordinator):  # type: ignore[t
         config: ConfigEntry,
         album_id: str,
     ) -> None:
-        """Initialize the coordinator for a specific album."""
-        super().__init__(
-            hass,
-            _LOGGER,
-            name=DOMAIN,
-            update_interval=None,
-        )
+        """Initialize a coordinator for one selected album."""
+        super().__init__(hass, _LOGGER, name=DOMAIN, update_interval=None)
         self._photos_manager = photos_manager
         self._config = config
         self.album_id = album_id
-        self.current_media_cache = {}
-        self._secondary_media_selection_lock = asyncio.Lock()
-        self._secondary_media_selection_attempted = False
-        self.current_media_selected_timestamp = datetime.fromtimestamp(0)
+        self.album = self._photos_manager.get_album(album_id)
+        self.current_media_primary: MediaItem | None = None
+        self.current_media_secondary: MediaItem | None = None
+        self._current_frame: bytes | None = None
+        self._next_frame: PreparedFrame | None = None
+        self._prepare_task: asyncio.Task[None] | None = None
+        self._interval_unsub: CALLBACK_TYPE | None = None
+        self._swap_due = False
+        self._render_generation = 0
+        self._failed_fingerprints: set[str] = set()
+        self._state_lock = asyncio.Lock()
         self.crop_mode = SETTING_CROP_MODE_DEFAULT_OPTION
         self.image_selection_mode = SETTING_IMAGESELECTION_MODE_DEFAULT_OPTION
         self.interval = SETTING_INTERVAL_DEFAULT_OPTION
         self.aspect_ratio = SETTING_ASPECT_RATIO_DEFAULT_OPTION
 
-        self.album = self._photos_manager.get_album(album_id)
-        if not self.album:
-            _LOGGER.warning("Album not found: %s, using default", album_id)
-            self.album = self._photos_manager.get_album(CONF_ALBUM_ID_FAVORITES)
-
     @property
     def current_media(self) -> MediaItem | None:
-        """Get the current primary media item."""
+        """Return the currently displayed primary source."""
         return self.current_media_primary
 
     @property
     def current_secondary_media(self) -> MediaItem | None:
-        """Get the current secondary media item (used in Combine mode)."""
+        """Return the currently displayed secondary source, if combined."""
         return self.current_media_secondary
 
     def get_device_info(self) -> DeviceInfo:
-        """Return DeviceInfo for this album's device."""
-        if self.album_id == CONF_ALBUM_ID_FAVORITES:
-            device_name = "Local Photos All"
-        else:
-            album_title = self.album.title if self.album else self.album_id
-            device_name = f"Local Photos {album_title}"
-
+        """Return device metadata for this album."""
+        album_title = self.album.title if self.album else self.album_id
+        name = "Local Photos All" if self.album_id == CONF_ALBUM_ID_FAVORITES else f"Local Photos {album_title}"
         return DeviceInfo(
             identifiers={(DOMAIN, self._config.entry_id, self.album_id)},  # type: ignore[arg-type]
             manufacturer=MANUFACTURER,
-            name=device_name,
-            configuration_url=None,
+            name=name,
         )
 
     def get_entity_unique_id(self, suffix: str | None = None) -> str:
-        """Return a unique ID for entities belonging to this album.
-
-        Older config entries did not store a prefix, so keep their legacy unique
-        IDs stable. New entries include a path-based prefix to allow multiple
-        configured folders with the same album_id, such as "ALL".
-        """
+        """Return a stable entity unique ID without changing legacy IDs."""
         prefix = self._config.options.get(CONF_UNIQUE_ID_PREFIX)
         base = f"{prefix}-{self.album_id}" if isinstance(prefix, str) and prefix else self.album_id
-        if suffix is None:
-            return base
-        return f"{base}-{suffix}"
+        return base if suffix is None else f"{base}-{suffix}"
+
+    def get_config_option(self, prop: str, default: Any) -> Any:
+        """Return an entry option with a fallback."""
+        return self._config.options.get(prop, default)
 
     def set_crop_mode(self, crop_mode: str) -> None:
-        """Set the crop mode and clear the image cache."""
-        self.current_media_cache = {}
+        """Set crop mode and render the current frame in the background."""
         self.crop_mode = crop_mode
+        self._discard_prepared_next()
+        self._schedule_current_rerender()
 
     def set_image_selection_mode(self, image_selection_mode: str) -> None:
-        """Set the image selection mode."""
+        """Set the source selection order."""
         self.image_selection_mode = image_selection_mode
+        self._discard_prepared_next()
 
     def set_interval(self, interval: str) -> None:
-        """Set the update interval and notify listeners."""
+        """Set the swap interval and replace the schedule."""
         self.interval = interval
+        self._reschedule_interval()
         self.async_update_listeners()
 
     def set_aspect_ratio(self, aspect_ratio: str) -> None:
-        """Set the aspect ratio, clear cache, and notify listeners."""
+        """Set target aspect ratio and render the current frame in the background."""
         self.aspect_ratio = aspect_ratio
-        self.current_media_cache = {}
+        self._discard_prepared_next()
+        self._schedule_current_rerender()
+
+    def _discard_prepared_next(self) -> None:
+        """Drop work made with settings that no longer apply."""
+        self._render_generation += 1
+        self._next_frame = None
+        if self._prepare_task is not None and not self._prepare_task.done():
+            self._prepare_task.cancel()
+        self._prepare_task = None
+
+    async def async_start(self) -> None:
+        """Render an initial frame and begin background preparation."""
+        if self.current_media is None:
+            await self._prepare_initial_frame()
+        self._reschedule_interval()
+        self._ensure_next_preparing()
+
+    async def async_shutdown(self) -> None:
+        """Cancel scheduled callbacks and background rendering on unload."""
+        if self._interval_unsub is not None:
+            self._interval_unsub()
+            self._interval_unsub = None
+        if self._prepare_task is not None:
+            self._prepare_task.cancel()
+            await asyncio.gather(self._prepare_task, return_exceptions=True)
+            self._prepare_task = None
+
+    def _render_dimensions(self) -> tuple[int, int]:
+        ratio_width, ratio_height = ASPECT_RATIO_VALUES.get(self.aspect_ratio, (16, 10))
+        return MAX_OUTPUT_LONG_EDGE, MAX_OUTPUT_LONG_EDGE * ratio_height // ratio_width
+
+    async def _prepare_initial_frame(self) -> None:
+        frame = await self._build_frame(exclude_id=None)
+        if frame is None:
+            _LOGGER.warning("No usable photos found in album %s", self.album_id)
+            return
+        await self._activate_frame(frame)
+
+    async def _build_frame(self, exclude_id: str | None) -> PreparedFrame | None:
+        """Select and render a valid candidate, trying each catalog asset once."""
+        all_items = await self._photos_manager.get_media_items(self.album_id)
+        candidates = [
+            item for item in all_items if item.id != exclude_id and item.fingerprint not in self._failed_fingerprints
+        ]
+        if self.image_selection_mode == SETTING_IMAGESELECTION_MODE_ALPHABETICAL:
+            all_items.sort(key=lambda item: item.filename.lower())
+            if exclude_id is not None:
+                current_index = next((i for i, item in enumerate(all_items) if item.id == exclude_id), -1)
+                ordered_items = all_items[current_index + 1 :] + all_items[: current_index + 1]
+                candidates = [
+                    item
+                    for item in ordered_items
+                    if item.id != exclude_id and item.fingerprint not in self._failed_fingerprints
+                ]
+        else:
+            random.shuffle(candidates)
+        for primary in candidates:
+            secondary = self._select_secondary(primary, candidates)
+            frame = await self._render_frame(primary, secondary)
+            if frame is not None:
+                return frame
+            self._failed_fingerprints.add(primary.fingerprint)
+            _LOGGER.debug("Skipping %s after render failure", primary.path)
+        return None
+
+    def _select_secondary(self, primary: MediaItem, candidates: list[MediaItem]) -> MediaItem | None:
+        """Choose a catalogued orientation match only when Combine benefits."""
+        if self.crop_mode != SETTING_CROP_MODE_COMBINED or primary.dimensions is None:
+            return None
+        target = self._render_dimensions()
+        if is_portrait(primary.dimensions) == is_portrait(target):
+            return None
+        if not self._combine_is_beneficial(target, primary.dimensions):
+            return None
+        matches = [
+            item
+            for item in candidates
+            if item.id != primary.id
+            and item.dimensions
+            and is_portrait(item.dimensions) == is_portrait(primary.dimensions)
+        ]
+        return random.choice(matches) if matches else None
+
+    @staticmethod
+    def _combine_is_beneficial(target: tuple[int, int], source: tuple[int, int]) -> bool:
+        """Return whether splitting the target discards no more source than one crop."""
+        target_width, target_height = target
+        source_width, source_height = source
+        if target_height / source_height > target_width / source_width:
+            half_target = (target_width, target_height / 2)
+        else:
+            half_target = (target_width / 2, target_height)
+
+        def cut_loss(frame: tuple[float, float]) -> float:
+            multiplier = max(frame[0] / source_width, frame[1] / source_height)
+            return 1 - (frame[0] * frame[1]) / ((source_width * multiplier) * (source_height * multiplier))
+
+        return cut_loss(half_target) <= cut_loss((target_width, target_height))
+
+    async def _render_frame(self, primary: MediaItem, secondary: MediaItem | None) -> PreparedFrame | None:
+        width, height = self._render_dimensions()
+        try:
+            if secondary is not None:
+                vertical_split = is_portrait((width, height))
+                image = await self.hass.async_add_executor_job(
+                    render_combined,
+                    primary.path,
+                    secondary.path,
+                    width,
+                    height,
+                    vertical_split,
+                )
+            else:
+                image = await self.hass.async_add_executor_job(
+                    render_single,
+                    primary.path,
+                    width,
+                    height,
+                    self.crop_mode != SETTING_CROP_MODE_ORIGINAL,
+                )
+        except Exception as err:  # noqa: BLE001
+            _LOGGER.debug("Could not render %s: %s", primary.path, err)
+            return None
+        if len(image) > MAX_RENDER_CACHE_BYTES // 2:
+            _LOGGER.debug("Skipping %s: rendered frame exceeds the cache safety limit", primary.path)
+            return None
+        return PreparedFrame(primary=primary, secondary=secondary, image=image)
+
+    async def _activate_frame(self, frame: PreparedFrame) -> None:
+        async with self._state_lock:
+            self.current_media_primary = frame.primary
+            self.current_media_secondary = frame.secondary
+            self._current_frame = frame.image
+            self._next_frame = None
+            self._swap_due = False
         self.async_update_listeners()
 
-    def get_config_option(self, prop: str, default: Any) -> Any:
-        """Get a config option from the config entry options."""
-        if self._config.options is not None and prop in self._config.options:
-            return self._config.options[prop]
-        return default
+    def _ensure_next_preparing(self) -> None:
+        if self._prepare_task is None or self._prepare_task.done():
+            self._prepare_task = self.hass.async_create_task(self._async_prepare_next())
 
-    def current_media_id(self) -> str | None:
-        """Return the ID of the current media item."""
-        media = self.current_media
-        return media.id if media is not None else None
-
-    async def set_current_media_with_id(self, media_id: str | None) -> None:
-        """Set the current media using only an ID."""
-        if media_id is None:
+    async def _async_prepare_next(self) -> None:
+        generation = self._render_generation
+        current_id = self.current_media_primary.id if self.current_media_primary else None
+        frame = await self._build_frame(exclude_id=current_id)
+        if frame is None or generation != self._render_generation:
             return
-        try:
-            self.current_media_selected_timestamp = datetime.now()
-            media = await self._get_media_by_id(media_id)
-            async with self._secondary_media_selection_lock:
-                self.current_media_primary = media
-                self.current_media_secondary = None
-                self._secondary_media_selection_attempted = False
-                self.current_media_cache = {}
-        except Exception as err:
-            _LOGGER.error("Error setting current media: %s", err)
-            raise UpdateFailed(f"Error setting current media: {err}") from err
+        async with self._state_lock:
+            self._next_frame = frame
+            swap_due = self._swap_due
+        if swap_due:
+            await self._swap_if_ready()
 
-    async def _get_media_by_id(self, media_id: str) -> MediaItem | None:
-        """Fetch a media item by ID, falling back to random on failure."""
-        try:
-            media = await self._photos_manager.get_media_item(self.album_id, media_id)
-        except Exception as err:
-            _LOGGER.error("Error getting media by id: %s", err)
-            raise UpdateFailed(f"Error getting media by id: {err}") from err
-        else:
-            if media is None:
-                _LOGGER.warning("Media %s not found in album %s", media_id, self.album_id)
-                return await self._get_random_media()
-            return media
+    async def _swap_if_ready(self) -> None:
+        async with self._state_lock:
+            frame = self._next_frame
+            if frame is None:
+                self._swap_due = True
+                return
+        await self._activate_frame(frame)
+        self.hass.loop.call_soon(self._ensure_next_preparing)
 
-    async def refresh_current_image(self) -> bool:
-        """Advance to the next image if the configured interval has elapsed."""
-        interval = SETTING_INTERVAL_MAP.get(self.interval)
-        if interval is None:
-            return False
-        time_delta = (datetime.now() - self.current_media_selected_timestamp).total_seconds()
-        if time_delta > interval or self.current_media is None:
-            await self.select_next()
-            return True
-        return False
+    @callback
+    def _interval_elapsed(self, now: datetime) -> None:
+        """Swap only a ready frame; retain the current one otherwise."""
+        self.hass.async_create_task(self._swap_if_ready())
+
+    def _reschedule_interval(self) -> None:
+        if self._interval_unsub is not None:
+            self._interval_unsub()
+            self._interval_unsub = None
+        seconds = SETTING_INTERVAL_MAP.get(self.interval)
+        if seconds is not None:
+            self._interval_unsub = async_track_time_interval(
+                self.hass, self._interval_elapsed, timedelta(seconds=seconds)
+            )
+
+    def _schedule_current_rerender(self) -> None:
+        """Render settings changes in background without blanking the camera."""
+        if self.current_media_primary is None:
+            return
+        primary = self.current_media_primary
+        secondary = self.current_media_secondary
+
+        async def rerender() -> None:
+            frame = await self._render_frame(primary, secondary)
+            if frame is not None:
+                await self._activate_frame(frame)
+                self._ensure_next_preparing()
+
+        self.hass.async_create_task(rerender())
 
     async def select_next(self, mode: str | None = None) -> None:
-        """Select the next media item based on the current or given mode."""
-        mode = mode or self.image_selection_mode
-        if mode.lower() == SETTING_IMAGESELECTION_MODE_ALPHABETICAL.lower():
-            await self._select_sequential_media()
-        else:
-            await self._select_random_media()
+        """Immediately request a new prepared frame for the next-media action."""
+        if mode is not None:
+            self.image_selection_mode = mode
+            self._discard_prepared_next()
+        if self._next_frame is None:
+            self._discard_prepared_next()
+            await self._async_prepare_next()
+        await self._swap_if_ready()
 
-    async def _select_random_media(self) -> None:
-        """Select a random media item."""
-        try:
-            media = await self._photos_manager.get_random_media_item(self.album_id)
-        except Exception as err:  # noqa: BLE001
-            _LOGGER.error("Error selecting random media: %s", err)
-        else:
-            if media:
-                await self.set_current_media_with_id(media.id)
-            else:
-                _LOGGER.warning("No media found in album %s", self.album_id)
+    async def set_current_media_with_id(self, media_id: str | None) -> None:
+        """Select a requested catalog item, retaining the old frame on failure."""
+        if media_id is None:
+            return
+        item = await self._photos_manager.get_media_item(self.album_id, media_id)
+        if item is None:
+            raise UpdateFailed(f"Media {media_id} not found in album {self.album_id}")
+        self._discard_prepared_next()
+        frame = await self._render_frame(
+            item, self._select_secondary(item, await self._photos_manager.get_media_items(self.album_id))
+        )
+        if frame is not None:
+            await self._activate_frame(frame)
+            self._ensure_next_preparing()
 
-    async def _select_sequential_media(self) -> None:
-        """Select the next media item in alphabetical order."""
-        try:
-            current_media_id = self.current_media_id()
-            media = await self._photos_manager.get_next_media_item(self.album_id, current_media_id)
-        except Exception as err:  # noqa: BLE001
-            _LOGGER.error("Error selecting sequential media: %s", err)
-        else:
-            if media:
-                await self.set_current_media_with_id(media.id)
-            else:
-                _LOGGER.warning("No media found in album %s", self.album_id)
-
-    async def _get_random_media(self) -> MediaItem | None:
-        """Get a random media item from the album."""
-        media = await self._photos_manager.get_random_media_item(self.album_id)
-        if not media:
-            _LOGGER.warning("No media found in album %s", self.album_id)
-        return media
+    async def refresh_current_image(self) -> bool:
+        """Compatibility shim; scheduled rendering owns interval advancement."""
+        return False
 
     async def get_media_data(self, width: int | None = None, height: int | None = None) -> bytes | None:
-        """Return binary image data for the current media, processed per crop mode."""
-        if self.current_media_primary is None:
-            return None
-
-        # Resolve None/zero dimensions from aspect ratio (HA may pass 0 before the
-        # frontend knows its target size)
-        if not width:
-            width = None
-        if not height:
-            height = None
-        if width is None or height is None:
-            aspect_ratio_values = ASPECT_RATIO_VALUES.get(self.aspect_ratio, (16, 10))
-            if width is None and height is None:
-                width = 1920
-                height = int(width * aspect_ratio_values[1] / aspect_ratio_values[0])
-            elif width is None:
-                assert height is not None
-                width = int(height * aspect_ratio_values[0] / aspect_ratio_values[1])
-            else:
-                assert width is not None
-                height = int(width * aspect_ratio_values[1] / aspect_ratio_values[0])
-
-        # At this point both width and height are int
-        w: int = width
-        h: int = height
-
-        cache_key = f"w{w}h{h}{self.crop_mode}{self.aspect_ratio}"
-        if cache_key in self.current_media_cache:
-            return self.current_media_cache[cache_key]
-
-        if self.crop_mode == SETTING_CROP_MODE_COMBINED:
-            result = await self._get_combined_media_data(w, h)
-            if result is not None:
-                self.async_update_listeners()
-                self.current_media_cache[cache_key] = result
-                return result
-
-        try:
-            path = self.current_media_primary.path
-            crop_mode = self.crop_mode
-
-            def read_and_process_image() -> bytes:
-                with Path(path).open("rb") as f:
-                    image_data = f.read()
-                with PILImage.open(io.BytesIO(image_data)) as img:
-                    img = apply_exif_orientation(img)
-                    if crop_mode == SETTING_CROP_MODE_CROP:
-                        img_resized = resize_and_crop_image(img, w, h)
-                    elif crop_mode == SETTING_CROP_MODE_ORIGINAL:
-                        img_resized = resize_to_fit(img, w, h)
-                    else:
-                        img_resized = resize_and_crop_image(img, w, h)
-                    img_byte_arr = io.BytesIO()
-                    # Camera images should be returned in a frontend-friendly
-                    # format. Returning HEIC/HEIF bytes works poorly for
-                    # standalone camera rendering, while the combined path
-                    # already normalizes to JPEG.
-                    if img_resized.mode not in ("RGB", "L"):
-                        img_resized = img_resized.convert("RGB")
-                    img_resized.save(img_byte_arr, format="JPEG", quality=95)
-                    return img_byte_arr.getvalue()
-
-            result = await self.hass.async_add_executor_job(read_and_process_image)
-        except Exception as err:  # noqa: BLE001
-            _LOGGER.error("Error processing image %s: %s", self.current_media_primary.path, err)
-            return None
-        else:
-            self.current_media_cache[cache_key] = result
-            self.async_update_listeners()
-            return result
-
-    async def _get_combined_media_data(self, width: int, height: int) -> bytes | None:
-        """Attempt to combine two orientation-matched images into one frame."""
-        requested_dimensions = (float(width), float(height))
-
-        async def get_combination_basis() -> tuple[bool, tuple[float, float]] | None:
-            media_dimensions = await self._get_media_dimensions()
-            if media_dimensions is None:
-                return None
-
-            media_is_portrait = is_portrait(media_dimensions)
-            if is_portrait(requested_dimensions) is media_is_portrait:
-                return None
-
-            combined_dims = calculate_combined_image_dimensions(requested_dimensions, media_dimensions)
-            cut_loss_single = calculate_cut_loss(requested_dimensions, media_dimensions)
-            cut_loss_combined = calculate_cut_loss(combined_dims, media_dimensions)
-            if cut_loss_single < cut_loss_combined:
-                return None
-            return media_is_portrait, combined_dims
-
-        combination_basis = await get_combination_basis()
-        if combination_basis is None:
-            return None
-        media_is_portrait, combined_dims = combination_basis
-
-        if self.current_media_secondary is None and not self._secondary_media_selection_attempted:
-            async with self._secondary_media_selection_lock:
-                # Recalculate while locked so the secondary matches the current primary.
-                combination_basis = await get_combination_basis()
-                if combination_basis is None:
-                    return None
-                media_is_portrait, combined_dims = combination_basis
-
-                if self.current_media_secondary is None and not self._secondary_media_selection_attempted:
-                    try:
-                        all_media = await self._photos_manager.get_media_items(self.album_id)
-                        current_id = self.current_media_id()
-                        similar_orientation_media: list[MediaItem] = []
-
-                        for media_item in all_media:
-                            if media_item.id == current_id:
-                                continue
-                            try:
-                                item_path = media_item.path
-
-                                def get_item_dimensions(path: str) -> tuple[int, int]:
-                                    with PILImage.open(path) as img:
-                                        return img.size  # type: ignore[return-value]
-
-                                item_dimensions = await self.hass.async_add_executor_job(get_item_dimensions, item_path)
-                                if is_portrait(item_dimensions) == media_is_portrait:
-                                    similar_orientation_media.append(media_item)
-                            except Exception:  # noqa: BLE001
-                                continue
-
-                        if similar_orientation_media:
-                            self.current_media_secondary = random.choice(similar_orientation_media)
-                    except Exception as err:  # noqa: BLE001
-                        _LOGGER.error("Error finding secondary image: %s", err)
-                    finally:
-                        self._secondary_media_selection_attempted = True
-
-        if self.current_media_secondary is None:
-            return None
-
-        try:
-            if self.current_media_primary is None:
-                return None
-            primary_path = self.current_media_primary.path
-            assert self.current_media_secondary is not None
-            secondary_path = self.current_media_secondary.path
-            dims = combined_dims
-            req_dims = requested_dimensions
-
-            def process_combined() -> bytes:
-                primary_data = Path(primary_path).read_bytes()
-                secondary_data = Path(secondary_path).read_bytes()
-                return combine_images(primary_data, secondary_data, width, height, dims, req_dims)
-
-            return await self.hass.async_add_executor_job(process_combined)
-        except Exception as err:  # noqa: BLE001
-            _LOGGER.error("Error creating combined image: %s", err)
-            return None
-
-    async def _get_media_dimensions(self, media: MediaItem | None = None) -> tuple[float, float] | None:
-        """Get the pixel dimensions of a media item (after EXIF orientation)."""
-        media = media or self.current_media
-        if media is None:
-            return None
-        try:
-            path = media.path
-
-            def get_dimensions() -> tuple[int, int]:
-                with PILImage.open(path) as img:
-                    img = apply_exif_orientation(img)
-                    return img.size  # type: ignore[return-value]
-
-            return await self.hass.async_add_executor_job(get_dimensions)
-        except Exception as err:  # noqa: BLE001
-            _LOGGER.error("Error getting image dimensions for %s: %s", media.path, err)
-            return None
-
-    async def update_data(self) -> None:
-        """Select an initial image if none is currently selected."""
-        if self.current_media is None and self.album is not None:
-            await self.select_next(None)
+        """Return the prepared JPEG; Home Assistant scales it if requested."""
+        if self._current_frame is None:
+            await self._prepare_initial_frame()
+        return self._current_frame
 
     async def _async_update_data(self) -> bool:
-        """Refresh album data and advance the current image if needed."""
-        try:
-            self.album = self._photos_manager.get_album(self.album_id)
-            if not self.album:
-                _LOGGER.warning("Album not found: %s, using default", self.album_id)
-                self.album = self._photos_manager.get_album(CONF_ALBUM_ID_FAVORITES)
-            await self.update_data()
-        except Exception as err:
-            _LOGGER.error("Error updating data: %s", err)
-            raise UpdateFailed(f"Error updating data: {err}") from err
-        else:
-            return True
+        self.album = self._photos_manager.get_album(self.album_id)
+        if self.album is None:
+            raise UpdateFailed(f"Album not found: {self.album_id}")
+        await self.async_start()
+        return self.current_media is not None

@@ -36,7 +36,7 @@
           "maximum_file_size": "Maximum image file size (MiB)"
         },
         "data_description": {
-          "maximum_file_size": "Files larger than this are skipped."
+          "maximum_file_size": "Files larger than this are skipped. Choose a higher value for large originals on a capable system."
         }
       },
       "album_select": {
@@ -55,9 +55,9 @@
   "selector": {
     "maximum_file_size": {
       "options": {
-        "20": "20 MiB",
         "50": "50 MiB",
-        "100": "100 MiB"
+        "100": "100 MiB",
+        "200": "200 MiB"
       }
     }
   },
@@ -118,6 +118,10 @@
     }
   },
   "issues": {
+    "no_usable_photos": {
+      "title": "No usable photos found",
+      "description": "The selected photo folders do not contain a supported image within the configured file-size limit. Enable debug logging for Local Photos to see why individual files were skipped."
+    },
     "directory_not_found": {
       "title": "Photos directory not found",
       "fix_flow": {

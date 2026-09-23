@@ -98,3 +98,10 @@ class CoordinatorManager:
         """Remove a coordinator instance."""
         self.coordinators.pop(album_id, None)
         self.coordinator_first_refresh.pop(album_id, None)
+
+    async def async_shutdown(self) -> None:
+        """Stop all coordinator background work before unloading the entry."""
+        await asyncio.gather(
+            *(coordinator.async_shutdown() for coordinator in self.coordinators.values()),
+            return_exceptions=True,
+        )

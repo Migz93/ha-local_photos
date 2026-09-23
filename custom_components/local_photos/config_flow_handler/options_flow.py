@@ -12,6 +12,7 @@ from custom_components.local_photos.const import (
     CONF_FOLDER_PATH,
     CONF_MAXIMUM_FILE_SIZE,
     SETTING_MAXIMUM_FILE_SIZE_DEFAULT_OPTION,
+    SETTING_MAXIMUM_FILE_SIZE_OPTIONS,
 )
 from homeassistant import config_entries
 
@@ -40,6 +41,8 @@ class LocalPhotosOptionsFlow(config_entries.OptionsFlow):
             CONF_MAXIMUM_FILE_SIZE,
             SETTING_MAXIMUM_FILE_SIZE_DEFAULT_OPTION,
         )
+        if current_maximum_file_size not in SETTING_MAXIMUM_FILE_SIZE_OPTIONS:
+            current_maximum_file_size = SETTING_MAXIMUM_FILE_SIZE_DEFAULT_OPTION
 
         if user_input is not None:
             folder_path = user_input[CONF_FOLDER_PATH]

@@ -1,8 +1,8 @@
-"""Filesystem manager for local_photos.
+"""Filesystem catalog for local_photos.
 
-Provides LocalPhotosManager, Album, and MediaItem classes for scanning and
-accessing local photo directories. All filesystem operations that may block
-should be called via hass.async_add_executor_job.
+The catalog contains source metadata only. Rendering is deliberately owned by
+the coordinator, so serving a camera image never requires walking the photo
+library again.
 """
 
 from __future__ import annotations
@@ -10,47 +10,45 @@ from __future__ import annotations
 from collections.abc import Mapping
 from datetime import datetime
 import logging
-import mimetypes
 from pathlib import Path
 import random
 from typing import TYPE_CHECKING, Any
+
+from PIL import Image as PILImage, UnidentifiedImageError
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
 
 from custom_components.local_photos.const import (
+    CONF_ALBUM_ID,
     CONF_ALBUM_ID_FAVORITES,
     CONF_FOLDER_PATH,
     CONF_MAXIMUM_FILE_SIZE,
+    MAX_SOURCE_PIXELS,
     SETTING_MAXIMUM_FILE_SIZE_DEFAULT_OPTION,
 )
 
 _LOGGER = logging.getLogger(__name__)
 
-# Supported image file extensions — always available via Pillow
-SUPPORTED_EXTENSIONS = [".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".tiff", ".tif"]
-
-# Optional HEIC/HEIF support (requires pillow-heif and libheif system library)
+# Register optional codecs before asking Pillow which extensions it can decode.
 try:
     from pillow_heif import register_heif_opener  # type: ignore[import-untyped]
 
-    register_heif_opener()
-    SUPPORTED_EXTENSIONS.extend([".heic", ".heif"])
-    mimetypes.add_type("image/heic", ".heic")
-    mimetypes.add_type("image/heif", ".heif")
-    _LOGGER.debug("HEIC/HEIF support enabled via pillow-heif")
+    register_heif_opener(thumbnails=True, decode_threads=1)
 except ImportError:
-    _LOGGER.debug("pillow-heif not available; HEIC/HEIF files will be skipped")
+    _LOGGER.debug("pillow-heif is unavailable; HEIC/HEIF files are not supported")
 
-# Optional AVIF support (requires pillow-avif-plugin or Pillow compiled with libavif)
 try:
     import pillow_avif  # type: ignore[import-untyped] # noqa: F401
-
-    SUPPORTED_EXTENSIONS.append(".avif")
-    mimetypes.add_type("image/avif", ".avif")
-    _LOGGER.debug("AVIF support enabled via pillow-avif-plugin")
 except ImportError:
-    _LOGGER.debug("pillow-avif-plugin not available; AVIF files will be skipped")
+    _LOGGER.debug("pillow-avif-plugin is unavailable; AVIF files are not supported")
+
+_PHOTO_FORMATS = frozenset({"AVIF", "BMP", "GIF", "HEIF", "JPEG", "PNG", "TIFF", "WEBP"})
+SUPPORTED_EXTENSIONS = frozenset(
+    extension.lower()
+    for extension, image_format in PILImage.registered_extensions().items()
+    if image_format in _PHOTO_FORMATS
+)
 
 
 class LocalPhotosFilesystemError(Exception):
@@ -58,18 +56,18 @@ class LocalPhotosFilesystemError(Exception):
 
 
 class LocalPhotosDirectoryNotFoundError(LocalPhotosFilesystemError):
-    """Exception raised when the photos directory does not exist."""
+    """Raised when the photos directory does not exist."""
 
 
 class LocalPhotosPermissionError(LocalPhotosFilesystemError):
-    """Exception raised when access to the photos directory is denied."""
+    """Raised when access to the photos directory is denied."""
 
 
 class Album:
     """Representation of a local photo album (folder)."""
 
     def __init__(self, id: str, title: str, path: str) -> None:
-        """Initialize a local album."""
+        """Initialize an album record."""
         self.id = id
         self.title = title
         self.path = path
@@ -79,259 +77,230 @@ class Album:
 
     def get(self, key: str, default: object = None) -> object:
         """Get album attribute."""
-        if key == "id":
-            return self.id
-        if key == "title":
-            return self.title
-        if key == "isWriteable":
-            return self.is_writeable
-        if key == "mediaItemsCount":
-            return self.media_items_count
-        if key == "productUrl":
-            return self.product_url
-        return default
+        return {
+            "id": self.id,
+            "title": self.title,
+            "isWriteable": self.is_writeable,
+            "mediaItemsCount": self.media_items_count,
+            "productUrl": self.product_url,
+        }.get(key, default)
 
 
 class MediaItem:
-    """Representation of a local media item (photo)."""
+    """Metadata for a single catalogued source image."""
 
-    def __init__(self, id: str, filename: str, path: str) -> None:
-        """Initialize a local media item."""
+    def __init__(
+        self,
+        id: str,
+        filename: str,
+        path: str,
+        *,
+        fingerprint: str | None = None,
+        dimensions: tuple[int, int] | None = None,
+    ) -> None:
+        """Initialize immutable-in-practice source metadata."""
         self.id = id
         self.filename = filename
         self.path = path
+        self.fingerprint = fingerprint or path
+        self.dimensions = dimensions
         self.creation_time = self._get_creation_time()
-        self.media_metadata = self._get_media_metadata()
+        self.media_metadata = {
+            "photo": {"cameraMake": "Local Photos", "cameraModel": "File System"},
+            "creationTime": self.creation_time.isoformat(),
+        }
         self.product_url = None
         self.contributor_info = None
 
     def _get_creation_time(self) -> datetime:
-        """Get creation time from file metadata."""
         try:
             stat = Path(self.path).stat()
-            ctime = datetime.fromtimestamp(stat.st_ctime)
-            mtime = datetime.fromtimestamp(stat.st_mtime)
-            return min(ctime, mtime)
-        except Exception as ex:  # noqa: BLE001
-            _LOGGER.error("Error getting creation time for %s: %s", self.path, ex)
+            return datetime.fromtimestamp(min(stat.st_ctime, stat.st_mtime))
+        except OSError as err:
+            _LOGGER.debug("Could not read creation time for %s: %s", self.path, err)
             return datetime.now()
-
-    def _get_media_metadata(self) -> dict:
-        """Get basic media metadata."""
-        return {
-            "photo": {
-                "cameraMake": "Local Photos",
-                "cameraModel": "File System",
-            },
-            "creationTime": self.creation_time.isoformat(),
-        }
 
     def get(self, key: str, default: object = None) -> object:
         """Get media item attribute."""
-        if key == "id":
-            return self.id
-        if key == "filename":
-            return self.filename
-        if key == "mediaMetadata":
-            return self.media_metadata
-        if key == "productUrl":
-            return self.product_url
-        if key == "contributorInfo":
-            return self.contributor_info
-        return default
+        return {
+            "id": self.id,
+            "filename": self.filename,
+            "mediaMetadata": self.media_metadata,
+            "productUrl": self.product_url,
+            "contributorInfo": self.contributor_info,
+        }.get(key, default)
 
 
 class LocalPhotosManager:
-    """Manager for local photos — the filesystem abstraction layer."""
+    """Catalog local photos for all configured albums."""
 
     def __init__(self, hass: HomeAssistant, config: Mapping[str, Any]) -> None:
-        """Initialize the local photos manager."""
+        """Initialize a catalog using the config entry's options."""
         self.hass = hass
         self.config = config
-
-        folder_path = config.get(CONF_FOLDER_PATH)
-        if folder_path:
-            p = Path(folder_path)
-            if not p.is_absolute():
-                p = Path(hass.config.config_dir) / folder_path
-            self.photos_dir = str(p)
-        else:
-            self.photos_dir = str(Path(hass.config.config_dir) / "www" / "photos")
-
+        configured_path = config.get(CONF_FOLDER_PATH)
+        photos_path = Path(configured_path) if configured_path else Path(hass.config.config_dir) / "www" / "photos"
+        if not photos_path.is_absolute():
+            photos_path = Path(hass.config.config_dir) / photos_path
+        self.photos_dir = str(photos_path)
         self.albums: dict[str, Album] = {}
         self._merged_sources: dict[str, list[str]] = {}
-        configured_file_size = config.get(CONF_MAXIMUM_FILE_SIZE, SETTING_MAXIMUM_FILE_SIZE_DEFAULT_OPTION)
+        self._media_by_album: dict[str, list[MediaItem]] = {}
+        self.skipped_count = 0
+        configured_size = config.get(CONF_MAXIMUM_FILE_SIZE, SETTING_MAXIMUM_FILE_SIZE_DEFAULT_OPTION)
         try:
-            self.maximum_file_size_bytes = int(configured_file_size) * 1024 * 1024
+            self.maximum_file_size_bytes = int(configured_size) * 1024 * 1024
         except TypeError, ValueError:
             self.maximum_file_size_bytes = int(SETTING_MAXIMUM_FILE_SIZE_DEFAULT_OPTION) * 1024 * 1024
 
     async def scan_albums(self) -> None:
-        """Scan for local photo albums (folders).
+        """Build a metadata catalog for the selected album roots only."""
+        photos_path = Path(self.photos_dir)
 
-        Raises LocalPhotosDirectoryNotFoundError if the photos directory does not exist.
-        """
-        dir_exists = await self.hass.async_add_executor_job(Path(self.photos_dir).exists)
-        if not dir_exists:
-            _LOGGER.error("Photos directory does not exist: %s", self.photos_dir)
-            raise LocalPhotosDirectoryNotFoundError(f"Directory does not exist: {self.photos_dir}")
+        def scan() -> tuple[dict[str, Album], dict[str, list[MediaItem]], int]:
+            if not photos_path.exists() or not photos_path.is_dir():
+                raise LocalPhotosDirectoryNotFoundError(f"Directory does not exist: {self.photos_dir}")
 
-        all_album_id = self.config.get(CONF_ALBUM_ID_FAVORITES, "ALL")
-        all_album = Album(id=all_album_id, title="All", path=self.photos_dir)
-        self.albums[all_album.id] = all_album
+            all_id = self.config.get(CONF_ALBUM_ID_FAVORITES, "ALL")
+            albums = {all_id: Album(id=all_id, title="All", path=str(photos_path))}
+            media_by_album: dict[str, list[MediaItem]] = {all_id: []}
+            skipped = 0
+
+            # Discover direct child folders only. This must stay cheap: a root
+            # can itself be a large network photo library.
+            child_albums = {path.name: path for path in photos_path.iterdir() if path.is_dir()}
+            for album_id, album_path in child_albums.items():
+                albums[album_id] = Album(id=album_id, title=album_id, path=str(album_path))
+                media_by_album[album_id] = []
+
+            selected = self.config.get(CONF_ALBUM_ID, [all_id])
+            selected_ids = set(selected) if isinstance(selected, list) else {all_id}
+            scan_all = all_id in selected_ids
+            selected_paths = {album_id: child_albums[album_id] for album_id in selected_ids if album_id in child_albums}
+
+            def catalog(path: Path, album_id: str | None) -> None:
+                nonlocal skipped
+                item = self._catalog_item(photos_path, path)
+                if item is None:
+                    skipped += 1
+                    return
+                if scan_all:
+                    media_by_album[all_id].append(item)
+                if album_id is not None:
+                    media_by_album[album_id].append(item)
+
+            if scan_all:
+                # "All Photos" intentionally remains an explicit full-tree
+                # scan. Populate selected child albums from this one walk too.
+                for path in photos_path.rglob("*"):
+                    if path.is_file():
+                        relative_parts = path.relative_to(photos_path).parts
+                        album_id = relative_parts[0] if relative_parts else None
+                        catalog(path, album_id if album_id in selected_paths else None)
+            else:
+                # A merged entry scans only its selected top-level folders;
+                # unselected siblings are never enumerated or opened.
+                for album_id, album_path in selected_paths.items():
+                    for path in album_path.rglob("*"):
+                        if path.is_file():
+                            catalog(path, album_id)
+
+            for album_id, media in media_by_album.items():
+                media.sort(key=lambda item: item.filename.lower())
+                albums[album_id].media_items_count = len(media)
+            return albums, media_by_album, skipped
 
         try:
-            photos_path = Path(self.photos_dir)
-            dir_items = await self.hass.async_add_executor_job(lambda: list(photos_path.iterdir()))
-            for item_path in dir_items:
-                is_dir = await self.hass.async_add_executor_job(item_path.is_dir)
-                if is_dir:
-                    album = Album(id=item_path.name, title=item_path.name, path=str(item_path))
-                    self.albums[album.id] = album
-                    _LOGGER.debug("Found album: %s at %s", album.title, album.path)
-        except PermissionError as ex:
-            raise LocalPhotosPermissionError(f"Permission denied scanning {self.photos_dir}") from ex
-        except OSError as ex:
-            _LOGGER.error("Error scanning for albums: %s", ex)
+            self.albums, self._media_by_album, self.skipped_count = await self.hass.async_add_executor_job(scan)
+        except PermissionError as err:
+            raise LocalPhotosPermissionError(f"Permission denied scanning {self.photos_dir}") from err
+
+    def _catalog_item(self, root: Path, path: Path) -> MediaItem | None:
+        """Return header-validated metadata, logging skips only at debug level."""
+        if path.suffix.lower() not in SUPPORTED_EXTENSIONS:
+            return None
+        try:
+            stat = path.stat()
+            if stat.st_size > self.maximum_file_size_bytes:
+                _LOGGER.debug(
+                    "Skipping %s: exceeds the configured %s MiB limit", path, self.maximum_file_size_bytes // 2**20
+                )
+                return None
+            with PILImage.open(path) as image:
+                if image.format not in _PHOTO_FORMATS:
+                    _LOGGER.debug("Skipping %s: unsupported decoded format %s", path, image.format)
+                    return None
+                width, height = image.size
+                if width * height > MAX_SOURCE_PIXELS:
+                    _LOGGER.debug("Skipping %s: source exceeds the internal pixel safety limit", path)
+                    return None
+                orientation = image.getexif().get(0x0112, 1)
+                if orientation in (5, 6, 7, 8):
+                    width, height = height, width
+        except (OSError, UnidentifiedImageError, ValueError) as err:
+            _LOGGER.debug("Skipping unreadable image %s: %s", path, err)
+            return None
+        relative_path = path.relative_to(root).as_posix()
+        return MediaItem(
+            id=relative_path,
+            filename=path.name,
+            path=str(path),
+            fingerprint=f"{relative_path}:{stat.st_size}:{stat.st_mtime_ns}",
+            dimensions=(width, height),
+        )
 
     def register_merged_album(self, source_album_ids: list[str], merged_id: str, title: str) -> None:
-        """Register a virtual album that combines media from multiple source albums."""
+        """Register a virtual album composed from several catalog albums."""
         self._merged_sources[merged_id] = source_album_ids
         self.albums[merged_id] = Album(id=merged_id, title=title, path="")
 
     def get_albums(self) -> list[Album]:
-        """Get all available albums."""
+        """Return catalogued albums."""
         return list(self.albums.values())
 
     def get_album(self, album_id: str) -> Album | None:
-        """Get album by ID."""
+        """Return one catalogued album."""
         return self.albums.get(album_id)
 
     async def get_media_items(self, album_id: str) -> list[MediaItem]:
-        """Get all media items in an album, sorted alphabetically."""
+        """Return catalogued items without filesystem work."""
         if album_id in self._merged_sources:
-            return await self._get_merged_media_items(album_id)
-
-        album = self.get_album(album_id)
-        if not album:
-            _LOGGER.error("Album not found: %s", album_id)
-            return []
-
-        media_items: list[MediaItem] = []
-        oversized_file_count = 0
-        all_album_id = self.config.get(CONF_ALBUM_ID_FAVORITES, "ALL")
-
-        if album_id == all_album_id:
-
-            def walk_directory() -> list[tuple[str, str]]:
-                result = []
-                for root, _, files in Path(album.path).walk():  # type: ignore[attr-defined]
-                    for file in files:
-                        file_path = root / file
-                        result.append((file, str(file_path)))
-                return result
-
-            file_paths = await self.hass.async_add_executor_job(walk_directory)
-            for file, file_path in file_paths:
-                is_valid, is_oversized = await self.hass.async_add_executor_job(self._is_valid_image, file_path)
-                oversized_file_count += is_oversized
-                if is_valid:
-                    media_items.append(MediaItem(id=file, filename=file, path=file_path))
-        else:
-            try:
-                album_path = Path(album.path)
-
-                def list_directory() -> list[Path]:
-                    return list(album_path.iterdir())
-
-                dir_files = await self.hass.async_add_executor_job(list_directory)
-                for item in dir_files:
-                    is_file = await self.hass.async_add_executor_job(item.is_file)
-                    if is_file:
-                        is_valid, is_oversized = await self.hass.async_add_executor_job(self._is_valid_image, str(item))
-                        oversized_file_count += is_oversized
-                        if is_valid:
-                            media_items.append(MediaItem(id=item.name, filename=item.name, path=str(item)))
-            except OSError as ex:
-                _LOGGER.error("Error getting media items for album %s: %s", album_id, ex)
-
-        album.media_items_count = len(media_items)
-        if oversized_file_count:
-            _LOGGER.warning(
-                "Skipped %d files larger than %d MiB in album %s",
-                oversized_file_count,
-                self.maximum_file_size_bytes // (1024 * 1024),
-                album_id,
-            )
-        media_items.sort(key=lambda item: item.filename.lower())
-        return media_items
-
-    async def _get_merged_media_items(self, merged_id: str) -> list[MediaItem]:
-        """Return deduplicated media items from all source albums of a merged album."""
-        seen_paths: set[str] = set()
-        media_items: list[MediaItem] = []
-        for source_id in self._merged_sources[merged_id]:
-            for item in await self.get_media_items(source_id):
-                if item.path not in seen_paths:
-                    seen_paths.add(item.path)
-                    media_items.append(item)
-        media_items.sort(key=lambda item: item.filename.lower())
-        album = self.albums.get(merged_id)
-        if album:
-            album.media_items_count = len(media_items)
-        return media_items
+            seen: set[str] = set()
+            items: list[MediaItem] = []
+            for source_id in self._merged_sources[album_id]:
+                for item in self._media_by_album.get(source_id, []):
+                    if item.path not in seen:
+                        seen.add(item.path)
+                        items.append(item)
+            items.sort(key=lambda item: item.filename.lower())
+            self.albums[album_id].media_items_count = len(items)
+            return items
+        return list(self._media_by_album.get(album_id, []))
 
     async def get_media_item(self, album_id: str, media_id: str) -> MediaItem | None:
-        """Get a specific media item by ID."""
-        media_items = await self.get_media_items(album_id)
-        for item in media_items:
-            if item.id == media_id:
-                return item
-        return None
+        """Return a catalogued item by stable relative-path ID."""
+        return next((item for item in await self.get_media_items(album_id) if item.id == media_id), None)
 
-    async def get_random_media_item(self, album_id: str) -> MediaItem | None:
-        """Get a random media item from an album."""
-        media_items = await self.get_media_items(album_id)
-        if not media_items:
-            return None
-        return random.choice(media_items)
+    async def get_random_media_item(self, album_id: str, exclude_id: str | None = None) -> MediaItem | None:
+        """Return a random catalogued item, optionally excluding one ID."""
+        items = [item for item in await self.get_media_items(album_id) if item.id != exclude_id]
+        return random.choice(items) if items else None
 
     async def get_next_media_item(self, album_id: str, current_media_id: str | None) -> MediaItem | None:
-        """Get the next media item in alphabetical order."""
-        media_items = await self.get_media_items(album_id)
-        if not media_items:
+        """Return the alphabetically next catalogued item."""
+        items = await self.get_media_items(album_id)
+        if not items:
             return None
-        if not current_media_id:
-            return media_items[0]
-        current_index = next(
-            (i for i, item in enumerate(media_items) if item.id == current_media_id),
-            -1,
-        )
-        if current_index >= 0:
-            return media_items[(current_index + 1) % len(media_items)]
-        return media_items[0]
+        current_index = next((index for index, item in enumerate(items) if item.id == current_media_id), -1)
+        return items[(current_index + 1) % len(items)]
 
-    def _is_valid_image(self, file_path: str) -> tuple[bool, bool]:
-        """Check if a file is a valid image, returning whether it exceeded the size limit."""
-        p = Path(file_path)
-        if p.suffix.lower() not in SUPPORTED_EXTENSIONS:
-            return False, False
-        try:
-            if not p.is_file():
-                return False, False
-            file_size = p.stat().st_size
-            if file_size > self.maximum_file_size_bytes:
-                _LOGGER.debug(
-                    "Skipping file larger than configured maximum (%s MiB): %s",
-                    self.maximum_file_size_bytes // (1024 * 1024),
-                    file_path,
-                )
-                return False, True
-            mime_type, _ = mimetypes.guess_type(file_path)
-            if not mime_type or not mime_type.startswith("image/"):
-                return False, False
-        except OSError as ex:
-            _LOGGER.error("Error checking image file %s: %s", file_path, ex)
-            return False, False
-        else:
-            return True, False
+
+__all__ = [
+    "SUPPORTED_EXTENSIONS",
+    "Album",
+    "LocalPhotosDirectoryNotFoundError",
+    "LocalPhotosFilesystemError",
+    "LocalPhotosManager",
+    "LocalPhotosPermissionError",
+    "MediaItem",
+]

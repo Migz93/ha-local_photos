@@ -128,8 +128,7 @@ class LocalPhotosBaseCamera(Camera):
         await self.coordinator.select_next(mode)
 
     async def async_camera_image(self, width: int | None = None, height: int | None = None) -> bytes | None:
-        """Return a still image from the camera."""
-        await self.coordinator.refresh_current_image()
+        """Return the already prepared still image from the camera."""
         if self.coordinator.current_media is None:
             _LOGGER.warning("No media selected for %s", self.name)
             return None

@@ -14,6 +14,8 @@ from custom_components.local_photos.const import (
     CONF_MAXIMUM_FILE_SIZE,
     CONF_UNIQUE_ID_PREFIX,
     CONF_WRITEMETADATA,
+    CONFIG_ENTRY_MINOR_VERSION,
+    CONFIG_ENTRY_VERSION,
     DOMAIN,
     SETTING_MAXIMUM_FILE_SIZE_DEFAULT_OPTION,
 )
@@ -29,7 +31,8 @@ if TYPE_CHECKING:
 class LocalPhotosConfigFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for local_photos."""
 
-    VERSION = 2
+    VERSION = CONFIG_ENTRY_VERSION
+    MINOR_VERSION = CONFIG_ENTRY_MINOR_VERSION
 
     folder_path: str
     _album_options: dict[str, str]
