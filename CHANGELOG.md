@@ -1,5 +1,29 @@
 # Changelog
 
+## [2.3.4](https://github.com/Migz93/ha-local_photos/compare/v2.4.0...v2.3.4) (2026-09-23)
+
+
+### Features
+
+* allow multiple album folders per camera entity ([f6dfd14](https://github.com/Migz93/ha-local_photos/commit/f6dfd1463f644ace41fe21910f64c4e11d418573))
+* rebuild local photos integration for v2.1.0 ([d5ced48](https://github.com/Migz93/ha-local_photos/commit/d5ced4811e11715ad8a874058fa89122252741c5))
+* redesign local photo pipeline ([d7cd759](https://github.com/Migz93/ha-local_photos/commit/d7cd759d931479bd98a316f2626b589147544b7d))
+* redesign local photo pipeline ([4c24573](https://github.com/Migz93/ha-local_photos/commit/4c24573b348a7840d509558ce9fc9477348786f8))
+
+
+### Bug Fixes
+
+* allow duplicate album names across folders ([18b701b](https://github.com/Migz93/ha-local_photos/commit/18b701bca418b89b1d814ab1cc4cc2411414765e))
+* allow the same album folder to appear in multiple camera entities ([f08673c](https://github.com/Migz93/ha-local_photos/commit/f08673c0c8beee5d8795c9aead15ca28f0400c2d))
+* **coordinator:** prevent combined image request failures ([#31](https://github.com/Migz93/ha-local_photos/issues/31)) ([c23f458](https://github.com/Migz93/ha-local_photos/commit/c23f45881df86b23f9ffd328f727d92219b1dfa2)), closes [#30](https://github.com/Migz93/ha-local_photos/issues/30)
+* multi-album config now creates a single merged camera entity ([add5413](https://github.com/Migz93/ha-local_photos/commit/add54135b7a6ff449d9025b444f4a0dd1c93de91))
+* suppress combine images argument lint ([a1032a7](https://github.com/Migz93/ha-local_photos/commit/a1032a784c1f794f2ddc2b94e3710124ade22319))
+
+
+### Maintenance
+
+* force release ([e951b71](https://github.com/Migz93/ha-local_photos/commit/e951b71d674f2621d9d51a9fde502d178f9ec7f9))
+
 ## [2.4.0](https://github.com/Migz93/ha-local_photos/compare/v2.3.5...v2.4.0) (2026-09-23)
 
 
