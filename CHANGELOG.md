@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.4.0](https://github.com/Migz93/ha-local_photos/compare/v2.3.5...v2.4.0) (2026-09-23)
+
+
+### Features
+
+* redesign local photo pipeline ([d7cd759](https://github.com/Migz93/ha-local_photos/commit/d7cd759d931479bd98a316f2626b589147544b7d))
+* redesign local photo pipeline ([4c24573](https://github.com/Migz93/ha-local_photos/commit/4c24573b348a7840d509558ce9fc9477348786f8))
+
 ## [2.3.5](https://github.com/Migz93/ha-local_photos/compare/v2.3.4...v2.3.5) (2026-09-12)
 
 
