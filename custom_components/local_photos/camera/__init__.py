@@ -89,8 +89,8 @@ class LocalPhotosBaseCamera(Camera):
 
     @property
     def available(self) -> bool:
-        """Return availability based on coordinator state."""
-        return self.coordinator.last_update_success
+        """Return whether the coordinator has a prepared frame to serve."""
+        return self.coordinator.last_update_success and self.coordinator.current_media is not None
 
     @callback
     def _handle_coordinator_update(self) -> None:
@@ -121,7 +121,7 @@ class LocalPhotosBaseCamera(Camera):
                 self._attr_extra_state_attributes.pop("secondary_media_contributor_info", None)
                 self._attr_extra_state_attributes.pop("secondary_media_url", None)
 
-            self.async_write_ha_state()
+        self.async_write_ha_state()
 
     async def next_media(self, mode: str | None = None) -> None:
         """Load the next media item."""

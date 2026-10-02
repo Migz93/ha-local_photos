@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from homeassistant.const import Platform
+from homeassistant.core import callback
 from homeassistant.exceptions import ConfigEntryNotReady
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.device_registry import DeviceEntry
@@ -55,17 +56,9 @@ async def async_setup_entry(
     manager = LocalPhotosManager(hass, entry.options)
 
     try:
-        await manager.scan_albums()
+        await manager.async_discover_albums()
     except LocalPhotosDirectoryNotFoundError as err:
         raise ConfigEntryNotReady(str(err)) from err
-
-    selected_albums = entry.options.get(CONF_ALBUM_ID, [CONF_ALBUM_ID_FAVORITES])
-    has_usable_photos = False
-    for album_id in selected_albums:
-        if await manager.get_media_items(album_id):
-            has_usable_photos = True
-            break
-    async_update_no_usable_photos_issue(hass, entry.entry_id, has_usable_photos)
 
     coordinator_manager = CoordinatorManager(hass, entry, manager)
     await coordinator_manager.initialize()
@@ -79,6 +72,16 @@ async def async_setup_entry(
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     entry.async_on_unload(entry.add_update_listener(async_reload_entry))
 
+    selected_albums = entry.options.get(CONF_ALBUM_ID, [CONF_ALBUM_ID_FAVORITES])
+
+    @callback
+    def update_no_usable_photos_issue() -> None:
+        if manager.scan_complete:
+            async_update_no_usable_photos_issue(hass, entry.entry_id, manager.has_usable_photos(selected_albums))
+
+    manager.async_add_listener(update_no_usable_photos_issue)
+    manager.async_start_scan()
+
     return True
 
 
@@ -88,6 +91,7 @@ async def async_unload_entry(
 ) -> bool:
     """Unload a config entry."""
     await entry.runtime_data.coordinator_manager.async_shutdown()
+    await entry.runtime_data.manager.async_shutdown()
     return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
 

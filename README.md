@@ -104,7 +104,7 @@ wallpanel:
 
 - Supported image formats: JPG, JPEG, PNG, GIF, BMP, WEBP, and TIFF. HEIC/HEIF and AVIF are supported when their Pillow codecs are available. Camera output is always JPEG for frontend compatibility.
 - The default maximum source file size is 50 MiB; choose 100 MiB or 200 MiB in integration options for larger originals. The integration also applies internal decoded-image safeguards.
-- The integration catalogs albums on setup — add new photos by restarting Home Assistant or reconfiguring the album. It prepares one next image in the background, so a slow or skipped file does not interrupt the currently displayed image.
+- The integration catalogs albums in the background after setup — add new photos by restarting Home Assistant or reconfiguring the album. On a large or network-mounted library the camera becomes available as soon as the first photos are found, and the photo count rises until the scan finishes. It prepares one next image in the background, so a slow or skipped file does not interrupt the currently displayed image.
 - To troubleshoot skipped files, enable Home Assistant debug logging for `custom_components.local_photos`; individual skipped-file reasons are not logged at normal levels.
 - The specified photos directory must already exist; the integration will not create it.
 - For best performance, keep your photo collection reasonably sized. Thousands of high-resolution photos may impact performance.

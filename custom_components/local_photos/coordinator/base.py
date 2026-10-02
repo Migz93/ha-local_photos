@@ -71,6 +71,8 @@ class LocalPhotosDataUpdateCoordinator(DataUpdateCoordinator[bool]):
         self._current_frame: bytes | None = None
         self._next_frame: PreparedFrame | None = None
         self._prepare_task: asyncio.Task[None] | None = None
+        self._initial_task: asyncio.Task[None] | None = None
+        self._catalog_unsub: CALLBACK_TYPE | None = photos_manager.async_add_listener(self._handle_catalog_update)
         self._interval_unsub: CALLBACK_TYPE | None = None
         self._swap_due = False
         self._render_generation = 0
@@ -154,10 +156,30 @@ class LocalPhotosDataUpdateCoordinator(DataUpdateCoordinator[bool]):
         if self._interval_unsub is not None:
             self._interval_unsub()
             self._interval_unsub = None
-        if self._prepare_task is not None:
-            self._prepare_task.cancel()
-            await asyncio.gather(self._prepare_task, return_exceptions=True)
-            self._prepare_task = None
+        if self._catalog_unsub is not None:
+            self._catalog_unsub()
+            self._catalog_unsub = None
+        tasks = [task for task in (self._prepare_task, self._initial_task) if task is not None]
+        for task in tasks:
+            task.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
+        self._prepare_task = None
+        self._initial_task = None
+
+    @callback
+    def _handle_catalog_update(self) -> None:
+        """Show the first frame as soon as the background scan finds photos."""
+        if self.current_media_primary is None:
+            if self._initial_task is None or self._initial_task.done():
+                self._initial_task = self.hass.async_create_task(self._async_prepare_initial())
+        elif self._next_frame is None:
+            self._ensure_next_preparing()
+        self.async_update_listeners()
+
+    async def _async_prepare_initial(self) -> None:
+        await self._prepare_initial_frame()
+        if self.current_media_primary is not None:
+            self._ensure_next_preparing()
 
     def _render_dimensions(self) -> tuple[int, int]:
         ratio_width, ratio_height = ASPECT_RATIO_VALUES.get(self.aspect_ratio, (16, 10))
@@ -166,7 +188,8 @@ class LocalPhotosDataUpdateCoordinator(DataUpdateCoordinator[bool]):
     async def _prepare_initial_frame(self) -> None:
         frame = await self._build_frame(exclude_id=None)
         if frame is None:
-            _LOGGER.warning("No usable photos found in album %s", self.album_id)
+            if self._photos_manager.scan_complete:
+                _LOGGER.warning("No usable photos found in album %s", self.album_id)
             return
         await self._activate_frame(frame)
 
