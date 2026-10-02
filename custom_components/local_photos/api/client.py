@@ -48,7 +48,7 @@ try:
 except ImportError:
     _LOGGER.debug("pillow-avif-plugin is unavailable; AVIF files are not supported")
 
-_PHOTO_FORMATS = frozenset({"AVIF", "BMP", "GIF", "HEIF", "JPEG", "PNG", "TIFF", "WEBP"})
+_PHOTO_FORMATS = frozenset({"AVIF", "BMP", "GIF", "HEIF", "JPEG", "MPO", "PNG", "TIFF", "WEBP"})
 SUPPORTED_EXTENSIONS = frozenset(
     extension.lower()
     for extension, image_format in PILImage.registered_extensions().items()

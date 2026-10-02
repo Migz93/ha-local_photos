@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from contextlib import AbstractContextManager
+import io
 from pathlib import Path
 import threading
 from unittest.mock import patch
@@ -14,6 +15,7 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 from custom_components.local_photos.api import LocalPhotosDirectoryNotFoundError, LocalPhotosManager, MediaItem
 from custom_components.local_photos.const import CONF_FOLDER_PATH, CONF_MAXIMUM_FILE_SIZE, DOMAIN
 from custom_components.local_photos.coordinator.base import LocalPhotosDataUpdateCoordinator
+from custom_components.local_photos.coordinator.image_processing import render_single
 from homeassistant.core import HomeAssistant
 
 
@@ -138,3 +140,25 @@ async def test_shutdown_stops_a_running_scan(hass: HomeAssistant, tmp_path: Path
 
     assert not manager.scan_complete
     assert await manager.get_media_items("ALL") == []
+
+
+@pytest.mark.unit
+async def test_multi_picture_jpeg_is_catalogued_and_rendered(hass: HomeAssistant, tmp_path: Path) -> None:
+    """A JPEG carrying a multi-picture segment is a normal photo, shown by its main picture."""
+    source = tmp_path / "phone.jpg"
+    Image.new("RGB", (160, 90), "white").save(
+        source, format="MPO", save_all=True, append_images=[Image.new("RGB", (160, 90), "black")]
+    )
+    manager = LocalPhotosManager(hass, {CONF_FOLDER_PATH: str(tmp_path)})
+
+    await manager.scan_albums()
+    items = await manager.get_media_items("ALL")
+
+    assert [item.id for item in items] == ["phone.jpg"]
+    assert items[0].dimensions == (160, 90)
+    assert manager.skipped_count == 0
+
+    rendered = render_single(items[0].path, 160, 90, crop=True)
+    with Image.open(io.BytesIO(rendered)) as image:
+        assert image.format == "JPEG"
+        assert image.getpixel((80, 45)) == (255, 255, 255)
