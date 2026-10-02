@@ -1,5 +1,14 @@
 # Changelog
 
+## [2.4.1](https://github.com/Migz93/ha-local_photos/compare/v2.4.0...v2.4.1) (2026-10-02)
+
+
+### Bug Fixes
+
+* **api:** catalog multi-picture JPEG (MPO) photos ([d6ef335](https://github.com/Migz93/ha-local_photos/commit/d6ef3356218e52e2b46467abed5e886b6b8dfd60)), closes [#30](https://github.com/Migz93/ha-local_photos/issues/30)
+* catalog photos in the background and accept MPO files ([dc0dcab](https://github.com/Migz93/ha-local_photos/commit/dc0dcab841149fddf9787190b6c0f7ab9725ba48))
+* **coordinator:** catalog photos in the background after setup ([48f8d43](https://github.com/Migz93/ha-local_photos/commit/48f8d43dba1cb62e693fe541ee4d9758e29763c2)), closes [#30](https://github.com/Migz93/ha-local_photos/issues/30)
+
 ## [2.4.0](https://github.com/Migz93/ha-local_photos/compare/v2.3.5...v2.4.0) (2026-09-23)
 
 
