@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 import io
 from pathlib import Path
 
@@ -31,6 +32,11 @@ class FakePhotosManager:
         self.album.media_items_count = len(media_items)
         self.media_items = media_items
         self.get_media_items_calls = 0
+        self.scan_complete = True
+
+    def async_add_listener(self, listener: Callable[[], None]) -> Callable[[], None]:
+        """Accept a catalog listener; the fake catalog never changes."""
+        return lambda: None
 
     def get_album(self, album_id: str) -> Album | None:
         """Return the sole test album."""

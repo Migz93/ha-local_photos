@@ -74,6 +74,7 @@ async def async_get_config_entry_diagnostics(
         "integration": integration_info,
         "coordinators": coordinator_info,
         "catalog": {
+            "scan_complete": manager.scan_complete,
             "skipped_source_count": manager.skipped_count,
             "album_count": len(manager.albums),
         },
