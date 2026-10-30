@@ -3,6 +3,8 @@ version: 2
 updates:
   - package-ecosystem: "devcontainers"
     directory: "/"
+    assignees:
+      - Migz93
     schedule:
       interval: "weekly"
       day: "monday"
@@ -11,6 +13,8 @@ updates:
 
   - package-ecosystem: "github-actions"
     directory: "/"
+    assignees:
+      - Migz93
     schedule:
       interval: "weekly"
       day: "monday"
@@ -29,6 +33,8 @@ updates:
 
   - package-ecosystem: "pip"
     directory: "/"
+    assignees:
+      - Migz93
     schedule:
       interval: "weekly"
       day: "monday"
