@@ -3,6 +3,8 @@ version: 2
 updates:
   - package-ecosystem: "devcontainers"
     directory: "/"
+    assignees:
+      - Migz93
     schedule:
       interval: "weekly"
       day: "monday"
@@ -21,15 +23,13 @@ updates:
 
   - package-ecosystem: "github-actions"
     directory: "/"
+    assignees:
+      - Migz93
     schedule:
       interval: "weekly"
       day: "monday"
     commit-message:
       prefix: "chore(deps)"
-    # These two take a tool version beside their pin; Renovate raises both together (.github/renovate.json)
-    ignore:
-      - dependency-name: "trufflesecurity/trufflehog"
-      - dependency-name: "jdx/mise-action"
     # Let new action versions settle for 7 days before opening a PR (same as HA Core)
     cooldown:
       default-days: 7
@@ -43,10 +43,8 @@ updates:
 
   - package-ecosystem: "pip"
     directory: "/"
-    # The integration's runtime requirements live in manifest.json as well, which Dependabot cannot read.
-    # Renovate (.github/renovate.json) raises both files together; without it they are bumped by hand.
-    exclude-paths:
-      - "requirements.txt"
+    assignees:
+      - Migz93
     schedule:
       interval: "weekly"
       day: "monday"
@@ -78,6 +76,8 @@ updates:
 
   - package-ecosystem: "npm"
     directory: "/"
+    assignees:
+      - Migz93
     schedule:
       interval: "weekly"
       day: "monday"

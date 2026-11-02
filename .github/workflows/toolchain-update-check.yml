@@ -23,16 +23,27 @@ jobs:
     runs-on: ubuntu-26.04
     timeout-minutes: 5
     permissions:
+      contents: read # inspect the repository's Renovate opt-in
       issues: read # look for Renovate's dependency dashboard and pull requests
       pull-requests: read # the issues endpoint lists pull requests too
     outputs:
       active: ${{ steps.detect.outputs.active }}
     steps:
+      - name: Checkout the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
       - name: Look for recent Renovate activity
         id: detect
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          if [[ -f .github/renovate.json ]] && jq -e '.enabled == false' .github/renovate.json >/dev/null; then
+            echo "Renovate is disabled — keeping the toolchain report active"
+            echo "active=false" >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
           # Renovate rewrites its dependency dashboard on every run, so an
           # installed App leaves an issue or pull request updated recently.
           since=$(date -u -d '45 days ago' +%Y-%m-%dT%H:%M:%SZ)
@@ -108,8 +119,8 @@ jobs:
               echo "| ---- | ------ | ------ |"
               cat rows.md
               echo ""
-              echo "Installing the [Renovate GitHub App](https://github.com/apps/renovate) raises these automatically"
-              echo "(\`.github/renovate.json\`), and this check then stops reporting."
+              echo "To adopt Renovate, enable \`enabled\` in \`.github/renovate.json\`, review its coverage, and install"
+              echo "the [Renovate GitHub App](https://github.com/apps/renovate). This report stops once it is active."
             } > report.md
             cat report.md >> "${GITHUB_STEP_SUMMARY}"
             echo "outdated=true" >> "${GITHUB_OUTPUT}"

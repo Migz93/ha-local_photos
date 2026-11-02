@@ -6,13 +6,13 @@ knowledge to build them.
 
 ## Scope
 
-Home Assistant custom integrations, commonly distributed through the Marketplace or HACS, are community projects. They are not part of
+Home Assistant custom integrations, commonly distributed through HACS, are community projects. They are not part of
 Home Assistant Core and are not automatically subject to the contribution rules of the Open Home Foundation (OHF).
 Core policies may still provide valuable guidance, but this project does not assume that every restriction appropriate
 for Core is also appropriate for an independently maintained community integration.
 
 If code from this project is contributed to an OHF repository, the current
-[OHF AI Policy](https://contributors.home-assistant.io/start/ai-policy/) applies to that contribution.
+[OHF AI Policy](https://developers.home-assistant.io/docs/ai_policy/) applies to that contribution.
 
 ## AI use is welcome
 
@@ -44,7 +44,7 @@ that the code is low quality.
 ## Maintainer responsibility
 
 Maintainers are encouraged to understand and oversee as much of their integration as reasonably possible, especially
-when distributing it through the Marketplace or HACS. They remain responsible for honestly documenting what they have and have not
+when distributing it through HACS. They remain responsible for honestly documenting what they have and have not
 reviewed or tested, responding to safety and security concerns, and avoiding unsupported claims about reliability.
 
 Where complete manual review is impractical, stronger indirect safeguards become more important. These include focused
@@ -94,34 +94,19 @@ change.
 ## Contributing upstream to Open Home Foundation
 
 The rules above govern this repository. The moment a contribution is aimed at an Open Home Foundation repository —
-`home-assistant/core`, `home-assistant/frontend`, the user documentation (`home-assistant/home-assistant.io`), the
-developer documentation (`home-assistant/contributors.home-assistant.io`), the brands repository — the [OHF AI
-policy](https://contributors.home-assistant.io/start/ai-policy/) applies instead. Its canonical copy is
-[`AI_POLICY.md`](https://github.com/home-assistant/.github/blob/master/AI_POLICY.md) in `home-assistant/.github`.
-What it requires:
+`home-assistant/core`, the developer documentation, the brands repository — the [OHF AI
+policy](https://developers.home-assistant.io/docs/ai_policy) applies instead, and it is stricter:
 
-- **No autonomous agents.** OHF closes pull requests and issues it believes were created autonomously, may mark
-  automated comments as spam, and counts anything that bypasses the issue or pull request templates as such.
-- **Review before anything is posted.** AI may help write an issue, pull request or comment, but a tool must not post
-  content the contributor has not reviewed; comments that look like unreviewed AI output may be hidden.
+- **Agents must never open an issue, pull request, or comment there.** Autonomous contributions are closed on sight,
+  and that includes anything that bypasses the issue or pull request templates. Prepare the material locally and hand
+  it to a human to submit.
 - **Do not use AI to answer a maintainer's question.** A contributor is expected to understand and explain their own
-  work; using it for grammar or clarity is fine.
+  work.
 - If AI-generated context is quoted in a discussion, it belongs in a quote block, is disclosed as such, and is
-  accompanied by the contributor's own reasoning about why it is relevant. Long snippets are not welcome.
+  accompanied by the contributor's own reasoning about why it is relevant. Long pasted transcripts are not welcome.
 - An AI-drafted pull request description still has to be checked for technical accuracy by the person submitting it.
-- **Pull request templates ask about AI** — Core and the frontend through two checkboxes (the contributor understands
-  the code and can explain it; generated code was reviewed for correctness and project standards). Leave them in
-  place and answer them honestly.
-
-This project goes further than OHF does: **agents never open an issue, pull request, or comment on an OHF repository
-at all**, reviewed or not ([`AGENTS.md`](AGENTS.md)). Prepare the material locally and hand it to a human to submit.
-That is this project's rule, not OHF's wording of it.
 
 Home Assistant also runs AI review bots of its own. Their comments are not authoritative — maintainers decide.
-
-The Marketplace catalog, [hacs/default](https://github.com/hacs/default), is run by the HACS team, not by OHF, so the
-OHF policy does not govern it; follow that repository's own rules, and see
-[`ha-marketplace`](.agents/skills/ha-marketplace/SKILL.md) for how the submission is prepared.
 
 ## Purpose of this blueprint
 

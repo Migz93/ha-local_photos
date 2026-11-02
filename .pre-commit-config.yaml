@@ -9,6 +9,9 @@
 # to the standard location at $HOME/.local/ha-venv.
 # Node hooks use ./node_modules/.bin/ (installed via npm install).
 #
+default_install_hook_types: [pre-commit, pre-push]
+default_stages: [pre-commit]
+
 repos:
   - repo: local
     hooks:
@@ -95,3 +98,12 @@ repos:
       #   # Run manually with: pre-commit run pyright --all-files
       #   stages: [manual]
       # yamllint enable rule:comments-indentation
+
+      # Check the exact committed tree before a push.
+      - id: push-gate
+        name: Validate pushed commit
+        entry: script/push-gate
+        language: system
+        stages: [pre-push]
+        pass_filenames: false
+        always_run: true

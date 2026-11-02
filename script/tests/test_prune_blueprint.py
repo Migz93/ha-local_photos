@@ -10,12 +10,11 @@ SCRIPT_DIR = Path(__file__).parents[1]
 SECTION_FILE = ".agents/skills/README.md"
 README = "keep\n<!-- blueprint-only:start -->\ndrop\n<!-- blueprint-only:end -->\nkeep too\n"
 PRUNED = (
-    ".github/FUNDING.yml",
     "docs/blueprint/MIGRATION.md",
     ".agents/skills/blueprint-skill-maintenance/SKILL.md",
     "script/tests/test_initialize.py",
 )
-PROJECT_OWNED = ".devcontainer/project-feature/devcontainer-feature.json"
+PROJECT_OWNED = (".devcontainer/project-feature/devcontainer-feature.json", ".github/FUNDING.yml")
 SYNC_IGNORE = ".templatesyncignore"
 SYNC_IGNORE_BEFORE = "docs/blueprint/\n.github/FUNDING.yml\n.agents/skills/blueprint-skill-maintenance/\n"
 
@@ -26,7 +25,7 @@ def repo(tmp_path: Path) -> Path:
     (tmp_path / "script" / ".lib").mkdir(parents=True)
     shutil.copy(SCRIPT_DIR / "prune-blueprint", tmp_path / "script" / "prune-blueprint")
     shutil.copy(SCRIPT_DIR / ".lib" / "output.sh", tmp_path / "script" / ".lib" / "output.sh")
-    for name in (*PRUNED, PROJECT_OWNED, "docs/user/GUIDE.md"):
+    for name in (*PRUNED, *PROJECT_OWNED, "docs/user/GUIDE.md"):
         (tmp_path / name).parent.mkdir(parents=True, exist_ok=True)
         (tmp_path / name).write_text("x\n", encoding="utf-8")
     (tmp_path / SECTION_FILE).write_text(README, encoding="utf-8")
@@ -51,7 +50,7 @@ def test_dry_run_lists_without_deleting(repo: Path) -> None:
     result = _run(repo)
 
     assert result.returncode == 0
-    assert "FUNDING.yml" in result.stdout
+    assert "docs/blueprint" in result.stdout
     assert all((repo / name).exists() for name in PRUNED)
     assert (repo / SECTION_FILE).read_text(encoding="utf-8") == README
     assert (repo / SYNC_IGNORE).read_text(encoding="utf-8") == SYNC_IGNORE_BEFORE
@@ -79,7 +78,7 @@ def test_apply_removes_leftovers_and_keeps_the_rest(repo: Path) -> None:
     assert not any((repo / name).exists() for name in PRUNED)
     assert (repo / SECTION_FILE).read_text(encoding="utf-8") == "keep\nkeep too\n"
     assert (repo / "docs" / "user" / "GUIDE.md").exists()
-    assert (repo / PROJECT_OWNED).exists()
+    assert all((repo / name).exists() for name in PROJECT_OWNED)
 
 
 @pytest.mark.unit

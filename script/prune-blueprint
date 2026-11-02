@@ -25,12 +25,12 @@ cd "$SCRIPT_DIR/.."
 source "$SCRIPT_DIR/.lib/output.sh"
 
 PRUNE_PATHS=(
-    ".github/FUNDING.yml"
     "docs/blueprint"
     ".agents/skills/blueprint-skill-maintenance"
     "script/tests/test_initialize.py"
 )
 PROJECT_OWNED_PATHS=(
+    ".github/FUNDING.yml"
     ".devcontainer/project-feature"
 )
 SECTION_FILE=".agents/skills/README.md"

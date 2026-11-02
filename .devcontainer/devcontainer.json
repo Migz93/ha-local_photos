@@ -1,6 +1,12 @@
 {
-  "name": "HA ${localWorkspaceFolderBasename} Dev Container",
+  "name": "HA local_photos Dev Container",
   "image": "mcr.microsoft.com/devcontainers/base:debian",
+  "runArgs": [
+    "--name",
+    "zdev-local_photos"
+  ],
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspaces/local_photos,type=bind,consistency=cached",
+  "workspaceFolder": "/workspaces/local_photos",
   // Lifecycle hooks — execution order on first creation:
   //   onCreateCommand → updateContentCommand → postCreateCommand → postStartCommand → postAttachCommand
   // On subsequent starts (container stopped/restarted):
