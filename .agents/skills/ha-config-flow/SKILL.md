@@ -44,8 +44,8 @@ config_flow_handler/
 ├── handler.py           # logic shared between the flows above
 ├── subentry_flow.py     # multi-device / multi-account subentries
 ├── schemas/
-│   ├── config.py        # probatio schemas for setup steps
-│   └── options.py       # probatio schemas for the options flow
+│   ├── config.py        # voluptuous schemas for setup steps
+│   └── options.py       # voluptuous schemas for the options flow
 └── validators/
     ├── credentials.py   # "can we actually talk to it" checks
     └── sanitizers.py    # input normalisation (strip, lowercase host, …)
@@ -138,6 +138,6 @@ correctly, and that the form renders the way the selectors promise.
 
 - Do not do blocking I/O or long retries inside a flow step; validate with a short timeout.
 - Do not call the flow done before walking it end to end.
-- Do not give an optional free-text field `default=None` — probatio injects that default when the field is left
+- Do not give an optional free-text field `default=None` — voluptuous injects that default when the field is left
   empty and the selector then rejects it, making the form unsubmittable. Carry the current value in
   `description={"suggested_value": ...}` instead.

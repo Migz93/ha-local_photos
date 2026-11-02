@@ -36,12 +36,12 @@ import shlex
 import subprocess
 import sys
 
-HOOK_TYPES = re.compile(r"^default_install_hook_types:.*\bpre-push\b", re.MULTILINE)
+HOOK_TYPES = re.compile(r"^default_install_hook_types:([^\n]*(?:\n(?:[ \t]+|-)[^\n]*)*)", re.MULTILINE)
 ASSIGNMENT = re.compile(r"[A-Za-z_][A-Za-z0-9_]*=.*")
 REDIRECTION = re.compile(r"\d*(?P<operator>&>>|&>|>>|>&|>\||<<<|<<-|<<|<&|<>|>|<)")
 SEPARATORS = ";&|()`\n"
 COMMAND_PREFIXES = {
-    "!", "{", "builtin", "command", "do", "elif", "else", "env", "exec", "if", "nohup", "sudo", "then", "time",
+    "!", "{", "builtin", "command", "do", "elif", "else", "exec", "if", "then", "time",
     "until", "while",
 }
 MAX_NESTING = 4
@@ -146,16 +146,42 @@ def find_shell_command(words, index):
     return None
 
 
+WRAPPER_VALUES = {
+    "env": {"-u", "--unset", "-C", "--chdir"},
+    "sudo": {"-u", "--user", "-g", "--group", "-h", "--host", "-p", "--prompt"},
+    "nice": {"-n", "--adjustment"},
+    "timeout": {"-s", "--signal", "-k", "--kill-after"},
+    "stdbuf": {"-i", "-o", "-e", "--input", "--output", "--error"},
+    "xargs": {"-I", "-L", "-n", "-P", "-s", "--max-args", "--max-procs", "--replace"},
+    "setsid": set(), "nohup": set(), "watch": {"-n", "--interval"},
+}
+
+
 def first_executable(words):
-    """Return the index of the program a simple command runs, past assignments and prefix commands."""
+    """Find the executable through shell prefixes and supported option-taking wrappers."""
     index = 0
     while index < len(words):
         word = words[index]
-        is_assignment = ASSIGNMENT.fullmatch(word)
-        is_prefix_option = index > 0 and words[index - 1] in COMMAND_PREFIXES and word.startswith("-")
-        if not (is_assignment or word in COMMAND_PREFIXES or is_prefix_option):
-            break
+        executable = os.path.basename(word)
+        if ASSIGNMENT.fullmatch(word) or word in COMMAND_PREFIXES:
+            index += 1
+            continue
+        if executable not in WRAPPER_VALUES:
+            return index
         index += 1
+        while index < len(words):
+            option = words[index]
+            if option == "--":
+                index += 1
+                break
+            if executable == "env" and ASSIGNMENT.fullmatch(option):
+                index += 1
+            elif option.startswith("-"):
+                index += 2 if option in WRAPPER_VALUES[executable] else 1
+            else:
+                break
+        if executable == "timeout" and index < len(words):
+            index += 1  # duration precedes the command
     return index
 
 
@@ -181,14 +207,18 @@ def inspect_git(words, index, cwd):
     index += 1
     while index < len(words) and words[index].startswith("-"):
         option = words[index]
-        if option in GIT_OPTIONS_WITH_VALUES and index + 1 < len(words):
+        if option.startswith("--config-env="):
+            configs.append(option.partition("=")[2].lower())
+        elif option.startswith("-c") and option != "-c":
+            configs.append(option[2:].lower())
+        elif option in GIT_OPTIONS_WITH_VALUES and index + 1 < len(words):
             if option == "-C":
-                git_dir = words[index + 1]
+                git_dir = os.path.join(git_dir, words[index + 1])
             if option in {"-c", "--config-env"}:
                 configs.append(words[index + 1].lower())
             index += 1
         elif option.startswith("-C"):
-            git_dir = option[2:]
+            git_dir = os.path.join(git_dir, option[2:])
         index += 1
     if index >= len(words):
         return None
@@ -250,13 +280,21 @@ def inspect(command, cwd, depth=0):
         if any(word.startswith("GIT_CONFIG") and sets_hooks_path(word) for word in words):
             return {"status": "block", "reason": BYPASS}
 
+        for inner in nested:
+            result = inspect_nested(inner, chain_dir or cwd, depth, "command")
+            if result["status"] == "block":
+                return result
+            pushes += result.get("directories", [])
+        nested = []
         index = first_executable(words)
         if index >= len(words):
             continue
         executable = os.path.basename(words[index])
         if executable == "cd":
             target = words[index + 2 : index + 3] if words[index + 1 : index + 2] == ["--"] else words[index + 1 :]
-            chain_dir = os.path.join(cwd, target[0]) if target else chain_dir
+            target = [word for word in target if word not in {"-P", "-L"}]
+            if target:
+                chain_dir = os.path.join(chain_dir or cwd, os.path.expandvars(os.path.expanduser(target[0])))
             continue
         if executable in {"bash", "sh", "zsh"}:
             wrapped = find_shell_command(words, index)
@@ -281,14 +319,21 @@ def inspect(command, cwd, depth=0):
     return {"status": "allow", "directories": pushes}
 
 
+def installs_pre_push(text):
+    """Read inline or block YAML hook stages, excluding comments and unrelated keys."""
+    match = HOOK_TYPES.search(text)
+    value = "\n".join(line.split("#", 1)[0] for line in match.group(1).splitlines()) if match else ""
+    return "pre-push" in re.findall(r"[A-Za-z][A-Za-z0-9-]*", value)
+
+
 def missing_hook(directory):
     """Return why git's pre-push hook would not run for a push from directory, or None when it would."""
     toplevel = subprocess.run(["git", "-C", directory, "rev-parse", "--show-toplevel"], capture_output=True, text=True)
     if toplevel.returncode != 0:
-        return None
+        return "cannot locate the repository for this push; use an explicit existing directory"
     root = Path(toplevel.stdout.strip())
     config = root / ".pre-commit-config.yaml"
-    if not config.is_file() or not HOOK_TYPES.search(config.read_text(encoding="utf-8")):
+    if not config.is_file() or not installs_pre_push(config.read_text(encoding="utf-8")):
         return (
             "this repository does not install git's pre-push hook; add pre-push to default_install_hook_types and a "
             "pre-push hook running script/push-gate to .pre-commit-config.yaml (see the blueprint's), then run "
@@ -297,8 +342,11 @@ def missing_hook(directory):
     hook = subprocess.run(
         ["git", "-C", str(root), "rev-parse", "--git-path", "hooks/pre-push"], capture_output=True, text=True
     )
-    if not (root / hook.stdout.strip()).is_file():
+    installed = root / hook.stdout.strip()
+    if not installed.is_file() or not os.access(installed, os.X_OK):
         return "git's pre-push hook is not installed; run prek install (script/setup/bootstrap does it)"
+    if "script/pre-push" not in installed.read_text(encoding="utf-8"):
+        return "git's pre-push hook does not install the native gate; run script/setup/bootstrap"
     return None
 
 
@@ -325,6 +373,8 @@ try:
     reason = decide(json.loads(os.environ["HOOK_PAYLOAD"]))
 except (KeyError, json.JSONDecodeError):
     reason = "the hook payload is not valid JSON"
+except Exception as err:  # fail closed when inspection itself fails
+    reason = f"cannot inspect the command safely ({type(err).__name__})"
 
 if os.environ["HOOK_EXPLAIN"] == "1":
     print("ALLOW" if reason is None else f"BLOCK {reason}")

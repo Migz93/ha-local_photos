@@ -21,7 +21,13 @@ def test_own_machine_without_mise_falls_back_to_path(tmp_path: Path) -> None:
         shutil.copy(SCRIPT_DIR / ".lib" / library, repo / "script" / ".lib" / library)
     (repo / "mise.toml").write_text('min_version = "2026.10.22"\n', encoding="utf-8")
     env = {key: value for key, value in os.environ.items() if key not in {"REMOTE_CONTAINERS", "CODESPACES"}}
-    env.update({"HOME": str(tmp_path), "PATH": "/usr/bin:/bin", "MISE_DATA_DIR": str(tmp_path / "mise")})
+    commands = tmp_path / "commands"
+    commands.mkdir()
+    for name in ("bash", "dirname", "mkdir", "cat", "rm", "rmdir"):
+        command = shutil.which(name)
+        assert command is not None
+        (commands / name).symlink_to(command)
+    env.update({"HOME": str(tmp_path), "PATH": str(commands), "MISE_DATA_DIR": str(tmp_path / "mise")})
     env.pop("CLAUDE_CODE_REMOTE", None)
 
     result = subprocess.run(

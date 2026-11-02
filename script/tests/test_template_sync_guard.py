@@ -7,7 +7,7 @@ import sys
 import pytest
 
 GUARD = Path(__file__).parents[1] / ".lib" / "version_guard.py"
-RENOVATE_CONFIG = Path(__file__).parents[2] / ".github" / "renovate.json"
+RENOVATE_CONFIG = '{"enabledManagers":["mise","pip_requirements","custom.regex","github-actions","npm","devcontainer"],"customManagers":[{"customType":"regex","managerFilePatterns":["/(^|/)custom_components/[^/]+/manifest\\\\.json$/"],"matchStrings":["\\"(?<depName>[A-Za-z0-9][A-Za-z0-9._-]*)(?:\\\\[[^\\\\]]*\\\\])?==(?<currentValue>[^\\"\\\\s;]+)\\""],"datasourceTemplate":"pypi"},{"customType":"regex","managerFilePatterns":["/(^|/)mise\\\\.toml$/","/(^|/)\\\\.devcontainer/devcontainer\\\\.json$/"],"matchStrings":["min_version = \\"(?<currentValue>[^\\"]+)\\"","\\"ghcr\\\\.io/devcontainers-extra/features/mise:\\\\d+(?:@sha256:[a-f0-9]+)?\\":\\\\s*\\\\{\\\\s*\\"version\\":\\\\s*\\"(?<currentValue>[^\\"]+)\\""],"depNameTemplate":"jdx/mise","datasourceTemplate":"github-releases","extractVersionTemplate":"^v(?<version>.+)$"},{"customType":"regex","managerFilePatterns":["/(^|/)\\\\.github/workflows/[^/]+\\\\.ya?ml$/"],"matchStrings":["# renovate: datasource=(?<datasource>\\\\S+) depName=(?<depName>\\\\S+)(?: extractVersion=(?<extractVersion>\\\\S+))?\\\\n\\\\s+version: \\"?(?<currentValue>[^\\"\\\\s]+)\\"?"]}],"mise":{"managerFilePatterns":["/(^|/)mise\\\\.devcontainer\\\\.toml$/","/(^|/)\\\\.config/mise/conf\\\\.d/[^/]+\\\\.toml$/"]}}'
 SHA_OLD = "a" * 40
 SHA_NEW = "b" * 40
 
@@ -60,9 +60,11 @@ def synced(tmp_path: Path) -> Path:
         ["git", "config", "user.name", "Guard Test"],
     ):
         subprocess.run(command, cwd=tmp_path, check=True)
-    _write(tmp_path, {**BASE, ".github/renovate.json": RENOVATE_CONFIG.read_text(encoding="utf-8")})
+    _write(tmp_path, {**BASE, ".github/renovate.json": RENOVATE_CONFIG})
     subprocess.run(["git", "add", "."], cwd=tmp_path, check=True)
-    subprocess.run(["git", "commit", "--quiet", "-m", "test: base"], cwd=tmp_path, check=True)
+    subprocess.run(
+        ["git", "-c", "commit.gpgsign=false", "commit", "--quiet", "-m", "test: base"], cwd=tmp_path, check=True
+    )
     _write(tmp_path, SYNCED)
     return tmp_path
 
@@ -135,7 +137,9 @@ def test_each_occurrence_is_compared_on_its_own(synced: Path) -> None:
     lowered = f"jobs:\n  a:\n    steps:\n      - uses: actions/checkout@{SHA_OLD} # v6.0.0\n      - uses: actions/checkout@{SHA_OLD} # v7.0.1\n"
     _write(synced, {".github/workflows/two.yml": base})
     subprocess.run(["git", "add", "."], cwd=synced, check=True)
-    subprocess.run(["git", "commit", "--quiet", "-m", "test: two jobs"], cwd=synced, check=True)
+    subprocess.run(
+        ["git", "-c", "commit.gpgsign=false", "commit", "--quiet", "-m", "test: two jobs"], cwd=synced, check=True
+    )
     _write(synced, {**SYNCED, ".github/workflows/two.yml": lowered})
 
     _guard(synced)
@@ -149,9 +153,70 @@ def test_each_occurrence_is_compared_on_its_own(synced: Path) -> None:
 def test_a_release_replaces_its_pre_release(synced: Path) -> None:
     """A beta pinned here is not kept over the stable release the template moves to."""
     _write(synced, {"requirements_test.txt": "pytest-homeassistant-custom-component==0.13.381b1\n"})
-    subprocess.run(["git", "commit", "--quiet", "-am", "test: beta"], cwd=synced, check=True)
+    subprocess.run(
+        ["git", "-c", "commit.gpgsign=false", "commit", "--quiet", "-am", "test: beta"], cwd=synced, check=True
+    )
     _write(synced, {**SYNCED, "requirements_test.txt": "pytest-homeassistant-custom-component==0.13.381\n"})
 
     _guard(synced)
 
     assert "==0.13.381\n" in _read(synced, "requirements_test.txt")
+
+
+@pytest.mark.unit
+def test_range_overrides_and_devcontainer_feature_tags(synced: Path) -> None:
+    """Syncs preserve npm range prefixes and numeric container feature pins."""
+    base = {
+        "package.json": '{"overrides":{"katex":"^0.19.0","re2js":"~2.9.0"}}',
+        ".devcontainer/devcontainer.json": '{"features":{"ghcr.io/devcontainers/features/node:3":{}}}',
+    }
+    _write(synced, base)
+    subprocess.run(["git", "add", "."], cwd=synced, check=True)
+    subprocess.run(
+        ["git", "-c", "commit.gpgsign=false", "commit", "--quiet", "-m", "test: versions"], cwd=synced, check=True
+    )
+    _write(
+        synced,
+        {
+            "package.json": '{"overrides":{"katex":"^0.18.2","re2js":"~2.8.7"}}',
+            ".devcontainer/devcontainer.json": '{"features":{"ghcr.io/devcontainers/features/node:2":{}}}',
+        },
+    )
+    result = _guard(synced)
+    assert result.returncode == 0, result.stderr
+    assert "^0.19.0" in _read(synced, "package.json")
+    assert "~2.9.0" in _read(synced, "package.json")
+    assert "node:3" in _read(synced, ".devcontainer/devcontainer.json")
+
+
+@pytest.mark.unit
+def test_new_named_step_does_not_hide_existing_action_downgrade(synced: Path) -> None:
+    """A new checkout step is not paired with an existing step's version."""
+    path = ".github/workflows/named.yml"
+    before = f"jobs:\n  build:\n    steps:\n      - name: Existing checkout\n        uses: actions/checkout@{SHA_NEW} # v7.0.0\n"
+    _write(synced, {path: before})
+    subprocess.run(["git", "add", "."], cwd=synced, check=True)
+    subprocess.run(
+        ["git", "-c", "commit.gpgsign=false", "commit", "--quiet", "-m", "test: named step"], cwd=synced, check=True
+    )
+    after = f"jobs:\n  build:\n    steps:\n      - name: New checkout\n        uses: actions/checkout@{SHA_NEW} # v8.0.0\n      - name: Existing checkout\n        uses: actions/checkout@{SHA_OLD} # v6.0.0\n"
+    _write(synced, {path: after})
+    result = _guard(synced)
+    assert result.returncode == 0, result.stderr
+    assert f"actions/checkout@{SHA_NEW} # v7.0.0" in _read(synced, path)
+    assert "# v8.0.0" in _read(synced, path)
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(("old", "new"), [("1.2.0-beta.2", "1.2.0-beta.1"), ("1.2.0-preview.2", "1.2.0-preview.1")])
+def test_spelled_out_prereleases_keep_their_number(synced: Path, old: str, new: str) -> None:
+    """Long prerelease names do not collapse to their one-letter prefixes."""
+    path = "requirements_test.txt"
+    _write(synced, {path: f"example=={old}\n"})
+    subprocess.run(["git", "add", "."], cwd=synced, check=True)
+    subprocess.run(
+        ["git", "-c", "commit.gpgsign=false", "commit", "--quiet", "-m", "test: prerelease"], cwd=synced, check=True
+    )
+    _write(synced, {path: f"example=={new}\n"})
+    assert _guard(synced).returncode == 0
+    assert old in _read(synced, path)

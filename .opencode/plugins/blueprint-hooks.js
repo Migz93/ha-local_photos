@@ -27,8 +27,8 @@ const miseEnv = (cwd, env) =>
 
 const runHook = (root, script, payload) =>
   new Promise((resolve) => {
-    const child = execFile("bash", [`${root}/${script}`], { cwd: root }, (error, stdout, stderr) => {
-      resolve({ stdout, stderr: stderr || error?.message || "", exitCode: error ? 1 : 0 });
+    const child = execFile("bash", [`${root}/${script}`], { cwd: root, timeout: 10000 }, (error, stdout, stderr) => {
+      resolve({ stdout, stderr: stderr || error?.message || "", exitCode: error ? (typeof error.code === "number" ? error.code : 1) : 0 });
     });
     child.stdin.on("error", () => {});
     child.stdin.end(JSON.stringify(payload));
@@ -50,7 +50,7 @@ export default {
 
     await ctx.tool.hook("execute.before", async (event) => {
       if (event.tool !== "shell") return;
-      const { stderr, exitCode } = await runHook(root, ".agents/hooks/pre-push-check.sh", { tool_input: event.input });
+      const { stderr, exitCode } = await runHook(root, ".agents/hooks/pre-push-check.sh", { cwd: ctx.location.directory, tool_input: event.input });
       if (exitCode !== 0) {
         throw new Error(stderr.trim() || "the push command was blocked by .agents/hooks/pre-push-check.sh");
       }
@@ -58,7 +58,7 @@ export default {
 
     await ctx.tool.hook("execute.after", async (event) => {
       if (event.status !== "completed" || !EDIT_TOOLS.has(event.tool)) return;
-      const { stdout } = await runHook(root, ".agents/hooks/remind-dependency-sync.sh", { tool_input: event.input });
+      const { stdout } = await runHook(root, ".agents/hooks/remind-dependency-sync.sh", { cwd: ctx.location.directory, tool_input: event.input });
       let additionalContext;
       try {
         additionalContext = JSON.parse(stdout)?.hookSpecificOutput?.additionalContext;

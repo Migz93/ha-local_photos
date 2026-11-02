@@ -16,7 +16,7 @@ def _commit(repo: Path, files: dict[str, str], message: str) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(content, encoding="utf-8")
     subprocess.run(["git", "add", "."], cwd=repo, check=True)
-    subprocess.run(["git", "commit", "--quiet", "-m", message], cwd=repo, check=True)
+    subprocess.run(["git", "-c", "commit.gpgsign=false", "commit", "--quiet", "-m", message], cwd=repo, check=True)
 
 
 def _init(repo: Path) -> None:

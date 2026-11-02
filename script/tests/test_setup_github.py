@@ -20,7 +20,7 @@ esac
 if [[ $1 == api && $2 != -X ]]; then
     case "$2" in
     repos/owner/repo) echo "$PRIVATE" ;;
-    repos/owner/repo/rulesets) echo "${EXISTING:-[]}" ;;
+    repos/owner/repo/rulesets*) echo "${EXISTING:-[]}" ;;
     repos/owner/repo/issues*) [[ $RENOVATE == yes ]] && echo 1 || echo 0 ;;
     */contents/.github/workflows/codeql.yml) [[ $CODEQL == yes ]] || exit 1 ;;
     esac
@@ -62,7 +62,13 @@ def _setup(
         "RENOVATE": "yes" if renovate else "no",
     }
     result = subprocess.run(
-        ["bash", "script/setup/github", *args], cwd=repo, capture_output=True, text=True, env=env, check=False
+        ["bash", "script/setup/github", *args],
+        cwd=repo,
+        stdin=subprocess.DEVNULL,
+        capture_output=True,
+        text=True,
+        env=env,
+        check=False,
     )
     assert result.returncode == 0, result.stdout + result.stderr
     return (calls.read_text(encoding="utf-8").splitlines() if calls.exists() else []), result.stdout
@@ -123,13 +129,13 @@ def test_merge_methods_follow_the_ruleset(repository: Path) -> None:
     rules = json.loads(ruleset.read_text(encoding="utf-8"))
     for rule in rules["rules"]:
         if rule["type"] == "pull_request":
-            rule["parameters"]["allowed_merge_methods"] = ["squash", "rebase"]
+            rule["parameters"]["allowed_merge_methods"] = ["squash"]
     ruleset.write_text(json.dumps(rules), encoding="utf-8")
 
     patch = next(call for call in _setup(repository)[0] if call.startswith("api -X PATCH repos/owner/repo "))
     body = json.loads(patch.split("--input - ", 1)[1])
 
-    assert (body["allow_squash_merge"], body["allow_merge_commit"], body["allow_rebase_merge"]) == (True, False, True)
+    assert (body["allow_squash_merge"], body["allow_merge_commit"], body["allow_rebase_merge"]) == (True, False, False)
 
 
 @pytest.mark.unit

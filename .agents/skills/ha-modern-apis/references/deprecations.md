@@ -1,6 +1,8 @@
 # Deprecated Home Assistant APIs and their replacements
 
-Verified against the Home Assistant version pinned in this devcontainer. Check with:
+Some entries describe newer Home Assistant releases. The supported baseline here is **2026.8.0**: a removal date
+does not establish that its replacement already exists in that release. Verify each replacement against the pinned
+source before using it. Check the installed version with:
 
 ```bash
 .venv/bin/python -c "from homeassistant.const import __version__; print(__version__)"
@@ -22,12 +24,10 @@ ones: [`ha-testing`](../../ha-testing/SKILL.md#two-settings-that-surprise-people
 
 ## Schema validation — `voluptuous` replaced by `probatio`
 
-The core validates with `probatio`, a drop-in replacement with the same API
-(`Schema`, `Required`, `Optional`, `All`, `Coerce`, `Range`, …). `async_show_form`, `add_suggested_values_to_schema`
-and service registration are typed against `probatio.Schema`, so a `voluptuous` schema fails type checking.
-This blueprint writes `import probatio` and `probatio.Schema(...)`; `probatio` ships with Home Assistant and needs no
-`manifest.json` requirement. An existing `import voluptuous as vol` still works at runtime, because Home Assistant aliases
-the name to `probatio`, and only the type checker complains.
+**For this repository's Home Assistant 2026.8.0 baseline, use `import voluptuous as vol`.**
+Home Assistant provides voluptuous and types config flows and service schemas against it. Probatio is not installed
+by that baseline. Do not introduce it or assume that Home Assistant aliases the two libraries. Reassess a schema
+migration only in a separate change that deliberately raises the supported Home Assistant version.
 
 ## Imports that moved
 

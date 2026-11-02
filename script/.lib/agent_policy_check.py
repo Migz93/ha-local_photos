@@ -204,6 +204,9 @@ def check() -> list[str]:
 
 def main() -> int:
     """Print every disagreement and fail when there is one."""
+    if not hasattr(glob, "translate"):
+        print("Python 3.13 or newer is required; run script/setup/toolchain and use the project interpreter.")
+        return 1
     try:
         errors = check()
     except ValueError as err:

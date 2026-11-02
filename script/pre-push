@@ -1,0 +1,23 @@
+#!/bin/bash
+
+# script/pre-push: Inspect every native Git pre-push ref before validating HEAD.
+# Installed by script/setup/bootstrap instead of relying on prek's first-ref input.
+set -euo pipefail
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+count=0
+while read -r local_ref local_sha remote_ref remote_sha extra; do
+    [[ -n $local_ref ]] || continue
+    count=$((count + 1))
+    if [[ $count -gt 1 || -n ${extra:-} || -z ${remote_sha:-} ]]; then
+        echo "Only a single branch may be pushed; no refs were sent" >&2
+        exit 1
+    fi
+    if [[ $local_sha =~ ^0+$ || $local_ref != refs/heads/* || $remote_ref != refs/heads/* ]]; then
+        echo "Only the checked-out branch may be pushed; tags and deletions require a manual decision" >&2
+        exit 1
+    fi
+    export PRE_COMMIT_LOCAL_BRANCH="$local_ref"
+    export PRE_COMMIT_TO_REF="$local_sha"
+done
+[[ $count -gt 0 ]] || exit 0
+exec "$SCRIPT_DIR/push-gate"

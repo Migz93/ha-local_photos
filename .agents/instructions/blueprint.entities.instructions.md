@@ -258,7 +258,8 @@ Home Assistant assigns every device to exactly one config entry and at most one 
 
 - Return `DeviceInfo` for a device owned by the entity's own config entry.
 - Create a separate device for each config subentry; never share one device across subentries.
-- Use `via_device_id` for a separate device reached through a hub, `ChildDeviceInfo` for a part of one product —
+- On Home Assistant 2026.8, use ordinary `DeviceInfo` and `via_device_id` for devices reached through a hub.
+  `ChildDeviceInfo` is unavailable on this baseline; its newer model is reference material only —
   which is which, and what a child device may carry: [`device-registry.md`](../skills/ha-modern-apis/references/device-registry.md).
 - Use `self.device_entry` inside an entity when the registered device is needed.
 - Scope explicit registry lookups with `async_get_device_by_identifier(identifier, config_entry_id)` or

@@ -1,7 +1,3 @@
-# Translations, test fixtures and documentation name passwords without holding one.
-filter = '''
-finding["rule_id"] == "generic-password" && filter.matchesAny(attributes["path"], ["(^|/)translations/[^/]+\\.json$", "^tests/", "\\.md$"])
-'''
-
+# Use the default secret detection rules, including documentation and fixtures.
 [extend]
 useDefault = true

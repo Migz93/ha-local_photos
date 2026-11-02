@@ -22,6 +22,7 @@ def repository(tmp_path: Path) -> Path:
     """A clean repository on main with the push gate and passing check stubs committed."""
     (tmp_path / "script" / ".lib").mkdir(parents=True)
     shutil.copy(SCRIPT_DIR / "push-gate", tmp_path / "script" / "push-gate")
+    shutil.copy(SCRIPT_DIR / "pre-push", tmp_path / "script" / "pre-push")
     shutil.copy(SCRIPT_DIR / ".lib" / "output.sh", tmp_path / "script" / ".lib" / "output.sh")
     _stub(tmp_path, "lint-check", 0)
     _stub(tmp_path, "type-check", 0)
@@ -30,7 +31,7 @@ def repository(tmp_path: Path) -> Path:
         ["git", "config", "user.email", "test@example.com"],
         ["git", "config", "user.name", "Push Gate Test"],
         ["git", "add", "."],
-        ["git", "commit", "--quiet", "-m", "test: initialize"],
+        ["git", "-c", "commit.gpgsign=false", "commit", "--quiet", "-m", "test: initialize"],
     ):
         subprocess.run(command, cwd=tmp_path, check=True)
     return tmp_path
@@ -111,7 +112,11 @@ def test_reports_each_failing_check(repository: Path, lint_exit: int, type_exit:
     """Both checks run, and the gate names every one that failed together with its output."""
     _stub(repository, "lint-check", lint_exit)
     _stub(repository, "type-check", type_exit)
-    subprocess.run(["git", "commit", "--quiet", "-am", "test: failing checks"], cwd=repository, check=True)
+    subprocess.run(
+        ["git", "-c", "commit.gpgsign=false", "commit", "--quiet", "-am", "test: failing checks"],
+        cwd=repository,
+        check=True,
+    )
 
     result = _run(repository)
 
@@ -119,3 +124,32 @@ def test_reports_each_failing_check(repository: Path, lint_exit: int, type_exit:
     for name in ("lint-check", "type-check"):
         assert (f"script/{name} failed" in result.stderr) == (name in reported)
         assert (f"{name} output" in result.stderr) == (name in reported)
+
+
+@pytest.mark.unit
+def test_native_hook_rejects_all_refs_before_running_checks(repository: Path) -> None:
+    """Git's full stdin cannot hide a second ref from the gate behind prek's first-ref adapter."""
+    sha = _head(repository)
+    refs = f"refs/heads/main {sha} refs/heads/main {'0' * 40}\nrefs/heads/other {sha} refs/heads/other {'0' * 40}\n"
+    result = subprocess.run(
+        [str(repository / "script/pre-push")], cwd=repository, input=refs, capture_output=True, text=True, check=False
+    )
+    assert result.returncode == 1
+    assert "single branch" in result.stderr
+    assert "lint-check output" not in result.stdout
+
+
+@pytest.mark.unit
+def test_native_hook_validates_single_head_ref(repository: Path) -> None:
+    """A native single-ref push delegates the actual SHA and branch to the gate."""
+    sha = _head(repository)
+    result = subprocess.run(
+        [str(repository / "script/pre-push")],
+        cwd=repository,
+        input=f"refs/heads/main {sha} refs/heads/main {'0' * 40}\n",
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    assert "Push gate passed" in result.stdout

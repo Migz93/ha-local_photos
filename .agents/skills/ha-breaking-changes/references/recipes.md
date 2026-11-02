@@ -11,9 +11,9 @@ integration root with
 
 ```python
 @callback
-def async_custom_equivalent_units(hass: HomeAssistant) -> dict[str, dict[str, str]]:
+def async_custom_equivalent_units(hass: HomeAssistant) -> dict[str, dict[str | None, str]]:
     """Return the units the recorder treats as the same."""
-    return {entity_id: {old_unit: new_unit}}
+    return {"sensor.example_energy": {"KWh": "kWh"}}  # replace with the affected entity and unit pair
 ```
 
 keyed by the entity IDs whose unit changed.

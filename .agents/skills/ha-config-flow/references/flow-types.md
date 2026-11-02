@@ -95,7 +95,7 @@ The handler is constructed with **no arguments** (`return OptionsFlowHandler()`)
 **Auto-reload:** subclass `OptionsFlowWithReload`. Every change has one reload owner: this class for options,
 `async_update_reload_and_abort` for reauth and reconfigure. **Do not add an update listener (`entry.add_update_listener`)
 next to them** — see [`deprecations.md`](../../ha-modern-apis/references/deprecations.md). Where one genuinely must
-stay, finish with `async_update_and_abort` and pass `reload_on_update=False`, and let the listener reload. Any other
+stay, finish with `async_update_and_abort` without `reload_on_update` (that method does not accept it), and let the listener reload. Any other
 reload from code is `hass.config_entries.async_schedule_reload(entry.entry_id)`, not `async_reload`.
 
 ## Subentry flow

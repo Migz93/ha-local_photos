@@ -5,7 +5,7 @@ description: >-
   integration. Use when asked to "add a service", "add an action", "expose X as a service call", "add a service
   that returns data", "make this callable from an automation", or when editing services.yaml, the service_actions/
   package, service schemas, service response data, or the async_setup() registration. Covers the services.yaml
-  contract, probatio schemas, selectors, entity/device targeting, response data, translated error messages, and
+  contract, voluptuous schemas, selectors, entity/device targeting, response data, translated error messages, and
   the Bronze quality-scale rule that actions must be registered in async_setup(). SYMPTOMS — load this if you are
   about to: register an action in `async_setup_entry()`; add a `services.yaml` field without a selector; add an
   `entity_id` field where `target:` belongs; raise a plain English `HomeAssistantError`; or swallow an action
@@ -20,7 +20,7 @@ Terminology: Home Assistant renamed "services" to **actions** in the UI, but the
 
 **Read [`blueprint.service_actions.instructions.md`](../../instructions/blueprint.service_actions.instructions.md)
 and [`blueprint.services_yaml.instructions.md`](../../instructions/blueprint.services_yaml.instructions.md)
-first** — they hold the rules: where registration must happen, the probatio schema pattern, how to resolve the target
+first** — they hold the rules: where registration must happen, the voluptuous schema pattern, how to resolve the target
 entry or device, which exception type to raise, permissions, the `target:` field, response-data requirements
 (including the `.isoformat()` trap), entity service actions, and the `icons.json` shape. This skill is the order of operations and the design decisions.
 
@@ -120,12 +120,14 @@ Actions must exist even when no config entry is loaded, so automations referenci
 error instead of "unknown service". Add the wrapper and registration in `service_actions/__init__.py`:
 
 ```python
+import voluptuous as vol
+
 SERVICE_SET_TARGET_VALUE = "set_target_value"
 
-SET_TARGET_VALUE_SCHEMA = probatio.Schema(
+SET_TARGET_VALUE_SCHEMA = vol.Schema(
     {
-        probatio.Required(ATTR_CONFIG_ENTRY_ID): cv.string,
-        probatio.Required(ATTR_VALUE): probatio.Coerce(float),
+        vol.Required(ATTR_CONFIG_ENTRY_ID): cv.string,
+        vol.Required(ATTR_VALUE): vol.Coerce(float),
     }
 )
 
@@ -197,7 +199,7 @@ Renaming an action breaks every automation and script that calls it. Treat it as
 
 ## Do not
 
-- Do not add `probatio.Schema` validation that contradicts the selector in `services.yaml` — two sources of truth for the
+- Do not add `vol.Schema` validation that contradicts the selector in `services.yaml` — two sources of truth for the
   same field is how a form starts accepting values the handler then rejects.
 - Do not call it done before invoking it from _Settings > Tools > Actions_.
 

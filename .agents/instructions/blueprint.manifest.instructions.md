@@ -112,7 +112,7 @@ Use package name with version constraint:
 ```
 
 **Only list what Home Assistant does not already ship.** A custom integration must not repeat a package from Core's
-own `requirements.txt` — `aiohttp`, `probatio`, `httpx`, `awesomeversion` and friends are already there, and
+own `requirements.txt` — `aiohttp`, `voluptuous`, `httpx`, `awesomeversion` and friends are already there, and
 pinning them from here can only conflict with Core.
 
 ## Validation

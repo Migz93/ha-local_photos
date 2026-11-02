@@ -3,6 +3,7 @@
 import os
 from pathlib import Path
 import subprocess
+from threading import Thread
 
 import pytest
 
@@ -85,12 +86,14 @@ def test_wait_for_run_returns_once_the_other_run_ends(tmp_path: Path) -> None:
     """A second run waits for the first instead of working on the same environment beside it."""
     (tmp_path / ".local").mkdir()
     (tmp_path / ".local" / "setup.status").write_text("running\n", encoding="utf-8")
-    # Started through a shell that exits at once, so the system reaps it when it ends, as with a real run.
-    pid = subprocess.run(
-        ["bash", "-c", "sleep 1 >/dev/null 2>&1 & echo $!"], capture_output=True, text=True, check=True
-    ).stdout
-    (tmp_path / ".local" / "setup.pid").write_text(pid, encoding="utf-8")
-    result = _bash(tmp_path, "wait_for_run setup 10 && run_state setup")
+    with subprocess.Popen(["sleep", "1"]) as process:
+        (tmp_path / ".local" / "setup.pid").write_text(str(process.pid), encoding="utf-8")
+        reaper = Thread(target=process.wait)
+        reaper.start()
+        try:
+            result = _bash(tmp_path, "wait_for_run setup 10 && run_state setup")
+        finally:
+            reaper.join()
 
     assert result.returncode == 0
     assert result.stdout.endswith("failed")
@@ -109,3 +112,17 @@ def test_wait_for_run_gives_up_at_its_limit(tmp_path: Path) -> None:
             other.kill()
 
     assert result.returncode == 1
+
+
+@pytest.mark.unit
+def test_atomic_acquisition_rejects_overlapping_runs(tmp_path: Path) -> None:
+    """Simultaneous setup processes cannot acquire the same exclusive lock."""
+    command = f'source "{LIBRARY}"; track_run setup --exclusive; echo acquired; sleep 2'
+    with subprocess.Popen(
+        ["bash", "-c", command], cwd=tmp_path, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+    ) as first:
+        assert first.stdout is not None
+        assert first.stdout.readline().strip() == "acquired"
+        second = _bash(tmp_path, "track_run setup --exclusive")
+        assert second.returncode != 0
+        first.wait(timeout=10)

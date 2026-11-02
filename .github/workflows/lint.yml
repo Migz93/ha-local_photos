@@ -54,10 +54,13 @@ jobs:
             exit 0
           fi
           head=$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${pr}" --jq .head.sha)
-          git fetch --quiet origin "pull/${pr}/head"
+          if ! pr_tree=$(gh api "repos/${GITHUB_REPOSITORY}/git/commits/${head}" --jq .tree.sha); then
+            echo "Cannot inspect the pull request tree — running everything"
+            exit 0
+          fi
           passed=$(gh api "repos/${GITHUB_REPOSITORY}/commits/${head}/check-runs?check_name=Lint%20and%20test" \
             --jq '[.check_runs[] | select(.conclusion == "success")] | length')
-          if [[ "$(git rev-parse "${SHA}^{tree}")" == "$(git rev-parse "FETCH_HEAD^{tree}")" && "${passed}" -gt 0 ]]; then
+          if [[ "$(git rev-parse "${SHA}^{tree}")" == "${pr_tree}" && "${passed}" -gt 0 ]]; then
             echo "Pull request #${pr} passed this job on the same tree — nothing left to check" >> "${GITHUB_STEP_SUMMARY}"
             echo "done=true" >> "${GITHUB_OUTPUT}"
           else

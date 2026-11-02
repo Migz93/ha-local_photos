@@ -61,7 +61,7 @@ sensor/
 **Import rules:**
 
 - Never `from __future__ import annotations` — Home Assistant requires Python 3.14, where annotations are already
-  lazily evaluated; Ruff's `banned-api` rejects it
+  lazily evaluated; omit the unnecessary future import in new code
 - `collections.abc` for abstract base classes (prefer over `typing`)
 - `typing` for complex types (Any, TYPE_CHECKING, etc.)
 
@@ -193,9 +193,8 @@ See [Integration Setup Failures](https://contributors.home-assistant.io/core/int
 
 ## Imports
 
-Ruff orders them. **Standard HA aliases:** `cv`, `dr`, `er`, `dt_util`. Schemas use a plain `import probatio`
-(`probatio.Schema`, `probatio.Required`, …), not `import voluptuous as vol` — see
-[`ha-modern-apis`](../skills/ha-modern-apis/references/deprecations.md#schema-validation--voluptuous-replaced-by-probatio).
+Ruff orders them. **Standard HA aliases:** `cv`, `dr`, `er`, `dt_util`. For the supported Home Assistant
+2026.8.0 baseline, schemas use `import voluptuous as vol` and `vol.Schema(...)`. Do not add Probatio.
 
 **A relative import may not reach into a parent package.** Ruff's `TID252` runs with the default
 `ban-relative-imports = "parents"`, the same setting Home Assistant Core uses, so `from ..const import DOMAIN` is

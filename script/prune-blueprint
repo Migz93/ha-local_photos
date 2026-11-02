@@ -56,6 +56,18 @@ if [[ -e initialize.sh && $ALLOW_UNINITIALIZED == false ]]; then
     exit 1
 fi
 
+# Reject malformed sections before deleting any paths.
+if [[ -f $SECTION_FILE ]]; then
+    python3 - "$SECTION_FILE" "$SECTION_START" "$SECTION_END" <<'CHECK_SECTION'
+from pathlib import Path
+import sys
+text = Path(sys.argv[1]).read_text()
+start, end = sys.argv[2:]
+if text.count(start) != text.count(end) or text.count(start) > 1 or (start in text and text.index(start) > text.index(end)):
+    sys.exit("Malformed blueprint-only section; nothing was changed")
+CHECK_SECTION
+fi
+
 found=0
 
 for path in "${PRUNE_PATHS[@]}"; do
@@ -73,7 +85,16 @@ done
 if [[ -f $SECTION_FILE ]] && grep -qF "$SECTION_START" "$SECTION_FILE"; then
     found=$((found + 1))
     if $APPLY; then
-        sed -i "\|$SECTION_START|,\|$SECTION_END|d" "$SECTION_FILE"
+        python3 - "$SECTION_FILE" "$SECTION_START" "$SECTION_END" <<'REMOVE_SECTION'
+from pathlib import Path
+import sys
+path = Path(sys.argv[1])
+text = path.read_text()
+start, end = sys.argv[2:]
+begin = text.index(start)
+finish = text.index(end, begin) + len(end)
+path.write_text(text[:begin] + text[finish:].removeprefix("\n"))
+REMOVE_SECTION
         log_success "Removed blueprint-only sections from $SECTION_FILE"
     else
         log_info "Would remove blueprint-only sections from $SECTION_FILE"

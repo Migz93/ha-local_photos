@@ -38,9 +38,9 @@ covers the `services.yaml` half of the change too.
   `configuration.yaml` that it is not read
 - Register the actions in `service_actions/__init__.py`; put the handler bodies in a module per logical group
 - Resolve the target with `homeassistant.helpers.service`: `service.async_get_config_entry(hass, DOMAIN, entry_id)`
-  for a `config_entry_id` field, `service.async_get_device_and_config_entry(hass, DOMAIN, device_id)` for a
-  `device_id` field. Both raise a translated `ServiceValidationError` when the entry or device is unknown, belongs to
-  another integration, or is not loaded — do not hand-write those checks or invent `entry_not_found`-style keys
+  for a `config_entry_id` field, a 2026.8-compatible device-registry lookup plus `service.async_get_config_entry` for a
+  `device_id` field. Reject an unknown device explicitly; the existing config-entry helper validates ownership and
+  loaded state and raises a translated `ServiceValidationError`. Do not assume a device helper from a newer release.
 - An action that acts on every entry iterates `hass.config_entries.async_loaded_entries(DOMAIN)`, never
   `async_entries()`, which also returns entries that are not loaded and have no `runtime_data`
 - Reach state through `entry.runtime_data`. **NEVER** use `hass.data[DOMAIN]` — this integration stores runtime
@@ -48,17 +48,16 @@ covers the `services.yaml` half of the change too.
 
 ## Service Schema
 
-Use `probatio` with `homeassistant.helpers.config_validation` for parameter validation. Home Assistant validates with
-`probatio`, and service registration is typed against `probatio.Schema` — a `voluptuous` schema fails type checking.
+Use `voluptuous` with `homeassistant.helpers.config_validation` for parameter validation on Home Assistant 2026.8.0.
 
 ```python
-import probatio
+import voluptuous as vol
 
 from homeassistant.helpers import config_validation as cv
 
-SERVICE_SCHEMA = probatio.Schema({
-    probatio.Required("device_id"): cv.string,
-    probatio.Optional("force", default=False): cv.boolean,
+SERVICE_SCHEMA = vol.Schema({
+    vol.Required("device_id"): cv.string,
+    vol.Optional("force", default=False): cv.boolean,
 })
 ```
 
@@ -138,7 +137,7 @@ service.async_register_platform_entity_service(
     DOMAIN,  # Integration domain, NOT platform domain!
     "set_timer",
     entity_domain="media_player",
-    schema={probatio.Required("sleep_time"): cv.time_period},
+    schema={vol.Required("sleep_time"): cv.time_period},
     func="set_sleep_timer",  # Method name on entity class
 )
 ```
@@ -191,3 +190,8 @@ if call.context.user_id:
 - A URL from the caller that Home Assistant will fetch is checked with `hass.config.is_allowed_external_url(url)`.
 - Data reported by the device or the cloud is untrusted too: validate it before it becomes part of a URL, a file path
   or a command.
+
+For device-targeted actions on 2026.8.0, resolve `device_id` with `dr.async_get(hass).async_get(device_id)`,
+reject an unknown device, and validate its owning `config_entry_id` with
+`service.async_get_config_entry(hass, DOMAIN, device.config_entry_id)` before using runtime data.
+The newer `service.async_get_device_and_config_entry` helper is unavailable on this baseline.

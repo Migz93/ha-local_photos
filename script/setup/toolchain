@@ -37,8 +37,7 @@ fi
 
 run_hook "setup/toolchain" "pre"
 # Two runs would share one mise data directory; the second waits and then only checks.
-wait_for_run toolchain || log_warning "The other script/setup/toolchain run is still going after 15 minutes — continuing"
-track_run toolchain
+track_run toolchain --wait
 
 mise_release_asset() {
     local os arch libc=""
@@ -52,7 +51,9 @@ mise_release_asset() {
     aarch64 | arm64) arch="arm64" ;;
     *) return 1 ;;
     esac
-    if [[ $os == "linux" ]] && ldd --version 2>&1 | grep -qi musl; then
+    local ldd_version
+    ldd_version="$(ldd --version 2>&1 || true)"
+    if [[ $os == "linux" && $ldd_version == *musl* ]]; then
         libc="-musl"
     fi
     printf 'mise-v%s-%s-%s%s.tar.gz' "$1" "$os" "$arch" "$libc"

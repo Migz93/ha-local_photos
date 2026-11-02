@@ -96,6 +96,9 @@ async def async_migrate_entry(hass: HomeAssistant, entry: {ClassPrefix}ConfigEnt
     if entry.version == 1:
         registry = er.async_get(hass)
         serial = entry.unique_id
+        if serial is None:
+            _LOGGER.error("Cannot migrate unique IDs without a stable config-entry unique ID")
+            return False  # preserve stored data; explain recovery in a fixable repair issue
 
         @callback
         def _migrate(entity: er.RegistryEntry) -> dict[str, Any] | None:

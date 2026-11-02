@@ -46,8 +46,13 @@ Reader = Callable[[str], str | None]
 
 def git(*args: str, check: bool = True) -> str:
     """Run git without ever waiting for credentials and return its output."""
-    env = {**os.environ, "GIT_TERMINAL_PROMPT": "0"}
-    result = subprocess.run(["git", *args], capture_output=True, text=True, check=False, env=env)
+    env = {**os.environ, "GIT_TERMINAL_PROMPT": "0", "GIT_ASKPASS": "", "SSH_ASKPASS": ""}
+    try:
+        result = subprocess.run(
+            ["git", "-c", "core.askPass=", *args], capture_output=True, text=True, check=False, env=env, timeout=120
+        )
+    except subprocess.TimeoutExpired as err:
+        raise SystemExit("git command timed out after 120 seconds") from err
     if check and result.returncode != 0:
         raise SystemExit(f"git {' '.join(args)} failed: {result.stderr.strip()}")
     return result.stdout
@@ -89,9 +94,10 @@ def identity(read: Reader, paths: list[str], ref: str | None) -> dict[str, str]:
                 found["owner"], found["repository"] = match.groups()
             break
     if "domain" in found:
-        where = [ref] if ref else []
-        hits = git(
-            "grep", "-h", "-E", COORDINATOR_CLASS, *where, "--", f"custom_components/{found['domain']}", check=False
+        hits = "\n".join(
+            read(path) or ""
+            for path in paths
+            if path.startswith(f"custom_components/{found['domain']}/") and path.endswith(".py")
         )
         match = re.search(COORDINATOR_CLASS, hits, re.MULTILINE)
         if match:
@@ -104,6 +110,12 @@ def identity(read: Reader, paths: list[str], ref: str | None) -> dict[str, str]:
 
 def substitutions(blueprint: dict[str, str], project: dict[str, str]) -> list[tuple[str, str]]:
     """Pair every blueprint name with this repository's, longest first so no name is replaced inside another."""
+    missing = sorted(blueprint.keys() - project.keys())
+    if missing:
+        print(
+            f"Missing project identity fields: {', '.join(missing)}; record them in .agents/blueprint-update.json",
+            file=sys.stderr,
+        )
     pairs: dict[str, str] = {}
 
     def pair(
@@ -194,7 +206,14 @@ def main(argv: list[str]) -> int:
     blueprint_paths = git("ls-tree", "-r", "--name-only", upstream).splitlines()
     tracked = git("ls-files").splitlines()
     recorded = state.get("identity")
-    project = {**identity(working_tree, tracked, None), **(recorded if isinstance(recorded, dict) else {})}
+    project = {
+        **identity(working_tree, tracked, None),
+        **{
+            key: value
+            for key, value in (recorded.items() if isinstance(recorded, dict) else [])
+            if isinstance(value, str) and value.strip()
+        },
+    }
     pairs = substitutions(identity(read_upstream, blueprint_paths, upstream), project)
     verbatim_names, verbatim_paths = verbatim(read_upstream("initialize.sh"))
 

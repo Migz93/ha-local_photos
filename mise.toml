@@ -36,5 +36,5 @@ if [[ -z "$token" ]]; then
   echo "renovate-dry-run: no GitHub token; run gh auth login, or set RENOVATE_GITHUB_COM_TOKEN" >&2
   exit 1
 fi
-RENOVATE_GITHUB_COM_TOKEN="$token" renovate --platform=local --dry-run=lookup
+LOG_LEVEL=debug RENOVATE_GITHUB_COM_TOKEN="$token" renovate --enabled=true --platform=local --dry-run=lookup
 '''

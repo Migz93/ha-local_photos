@@ -55,15 +55,15 @@ inferred ID is wrong whenever one step method calls another.
 
 ### Form Schemas
 
-Schemas are written with Probatio (`import probatio`), the validation library Home Assistant uses — not voluptuous.
+For Home Assistant 2026.8.0, write schemas with `import voluptuous as vol`; Probatio is not part of this baseline.
 
-**Simple fields** - `probatio.Required("field"): str`, `probatio.Optional("field", default=value): int`
+**Simple fields** - `vol.Required("field"): str`, `vol.Optional("field", default=value): int`
 
 **Rich UI** - Use [selectors](https://contributors.home-assistant.io/glossary/selector/): `TextSelector`,
 `NumberSelector`, `EntitySelector`, `DeviceClassSelector`, `StateClassSelector`, etc.
 
 **Sections** - Group with `section()`:
-`probatio.Required("advanced"): section(probatio.Schema({...}), {"collapsed": True})`
+`vol.Required("advanced"): section(vol.Schema({...}), {"collapsed": True})`
 
 - Only **one level** — a section inside a section is not allowed.
 - A section **nests the submitted data**: `{"host": …, "advanced": {"port": …}}`. Read it accordingly. (Sections in
@@ -78,13 +78,12 @@ Schemas are written with Probatio (`import probatio`), the validation library Ho
 **Schema hygiene:**
 
 - Required keys first, optional second.
-- An optional key's default must be a **valid value** — `probatio.Optional(CONF_X, default=None): cv.string` is wrong;
+- An optional key's default must be a **valid value** — `vol.Optional(CONF_X, default=None): cv.string` is wrong;
   use `default=""`.
-- Reach for the specific validator before `cv.string`: `probatio.Port()`, `cv.url`, `cv.positive_int`,
+- Reach for the specific validator before `cv.string`: `cv.port`, `cv.url`, `cv.positive_int`,
   `cv.small_float`, `cv.entity_id`, `cv.time_zone`, `cv.slug`, `cv.icon`, `cv.temperature_unit`.
-- Wrap the key of a password, token or PIN in `probatio.Secret(...)` —
-  `probatio.Required(probatio.Secret(CONF_PASSWORD))` — so a validation error never echoes the value.
-- A `probatio.In(...)` field with no `default` pre-selects the first option in the frontend.
+- Use password selectors and redact validation errors; never echo credentials in an error message.
+- A `vol.In(...)` field with no `default` pre-selects the first option in the frontend.
 
 **Menus** - `async_show_menu(..., sort=True)` sorts entries by their translated label; per-entry help text comes from
 `menu_option_descriptions` in the translations.
@@ -94,8 +93,8 @@ split below, so it cannot hold connection data or credentials.
 
 **Pre-filling:**
 
-- Default values: `probatio.Optional("field", default="value")`
-- Suggested values: `probatio.Optional("field", description={"suggested_value": "value"})`
+- Default values: `vol.Optional("field", default="value")`
+- Suggested values: `vol.Optional("field", description={"suggested_value": "value"})`
 - Merge from existing: `self.add_suggested_values_to_schema(schema, entry.options)`
 
 **Read-only fields** - Set `read_only=True` in selector config (e.g., `EntitySelectorConfig(read_only=True)`)
@@ -152,14 +151,14 @@ Where a value lives is decided once and changing it later requires a migration.
 
 - Keep credentials in `entry.data` only — never in `entry.options`, never in the entry title.
 - Reuse `CONF_*` names from `homeassistant.const` where one exists; otherwise define them in `const.py`.
-- Give every schema field a `selector.*` and a default. A bare `probatio.Coerce(int)` renders as an untyped box and is
+- Give every schema field a `selector.*` and a default. A bare `vol.Coerce(int)` renders as an untyped box and is
   a review blocker.
 - Give every field both a `data` and a `data_description` translation key.
 - Pre-fill with `self.add_suggested_values_to_schema(schema, entry.data)` on reconfigure and options.
 - Tolerate entries created before the field existed — supply a default at read time or migrate.
 
 ```python
-probatio.Optional(CONF_THRESHOLD, default=DEFAULT_THRESHOLD): selector.NumberSelector(
+vol.Optional(CONF_THRESHOLD, default=DEFAULT_THRESHOLD): selector.NumberSelector(
     selector.NumberSelectorConfig(min=1, max=60, unit_of_measurement="%", mode=selector.NumberSelectorMode.BOX),
 ),
 ```
@@ -249,8 +248,9 @@ Setup failures in `async_setup_entry()` are not this file's scope: see
   calls it for a **newer major** version (it refuses that entry itself), and a **newer minor** version from a later
   release must be left alone and `True` returned. A `if entry.version > N: return False` branch is dead code.
 - Update via `hass.config_entries.async_update_entry(entry, version=X, minor_version=Y)`
-- On failure, **raise** rather than return `False`: `ConfigEntryNotReady` when retrying later can succeed,
-  `ConfigEntryError` when it cannot — the repair that retries the latter:
+- On Home Assistant 2026.8, log the migration failure and return `False`. That release catches migration
+  exceptions as failures; `ConfigEntryNotReady` does not schedule a migration retry. Newer exception-based
+  migration and retry APIs must not be used without a separate minimum-version change. Recovery guidance:
   [`migration.md`](../skills/ha-config-flow/references/migration.md).
 - Log migration events
 

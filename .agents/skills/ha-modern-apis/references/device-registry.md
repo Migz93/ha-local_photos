@@ -1,6 +1,9 @@
 # Device registry — single owner, child devices, lookups
 
-Verified against the Home Assistant version pinned in this devcontainer. When an entry here disagrees with the installed
+**Baseline: Home Assistant 2026.8.0.** `ChildDeviceInfo`, `async_get_or_create_child`, and
+`async_get_device_and_config_entry_for_domain` are not available on this baseline. Use ordinary `DeviceInfo`,
+`via_device_id`, and a device lookup followed by the existing service config-entry helper.
+The child-device sections below describe newer APIs and must not be copied into 2026.8-compatible code. When an entry here disagrees with the installed
 source, the source wins:
 
 ```bash
@@ -48,7 +51,7 @@ Two different relations — do not mix them up:
 | A **part of one product** — an outlet of a power strip, one gang of a wall switch | A child device: `ChildDeviceInfo(identifiers=…, name=…, parent_device_id=parent.id)`, or `device_registry.async_get_or_create_child(...)` |
 | A hub or account with config-subentry devices                                     | Separate devices; each subentry device points at the hub with `via_device_id`                                                             |
 
-A child device has no identity of its own — no `connections`, `via_device_id`, manufacturer, model, firmware or serial
+A child device has its own identifiers but no independent connection or product metadata — no `connections`, `via_device_id`, manufacturer, model, firmware or serial
 number; those stay on the parent. It belongs to the parent's config entry **and** subentry (pass `config_subentry_id`,
 it is not inherited), cannot have children, inherits the parent's area unless it has its own, and is removed and
 disabled with its parent. The parent must already be registered: the registry raises `DeviceInfoError` otherwise.

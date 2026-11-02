@@ -178,21 +178,12 @@ trigger, and is `None` again once the condition clears.
 
 ## Two settings that surprise people
 
-**Warnings are errors, and so are Home Assistant's own deprecations.** `filterwarnings = ["error"]` in
-`pyproject.toml` fails the suite on a Python `DeprecationWarning`, which catches libraries. Home Assistant's own
-deprecations — a removed helper, a deprecated constant, a wrong-thread call — are **logged** instead:
-`Detected that custom integration '<domain>' …` from `report_usage()`, or `The deprecated … was used from <domain>`
-from the deprecation helpers. The autouse `fail_on_deprecation_report` fixture in `tests/conftest.py` fails every test
-whose `caplog` holds such a record. A path no test reaches still needs the runtime log — see
-[`ha-modern-apis`](../ha-modern-apis/SKILL.md#fixing-a-deprecation-warning). Fix the cause; never filter the message.
-
-The one exception to "warnings are errors" is a warning **Home Assistant Core raises about its own use of a library it
-pins**, which no change here can fix and which would otherwise block every test that touches that subsystem — the
-aiohttp warnings from `homeassistant/helpers/aiohttp_client.py` and `homeassistant/components/http/` are the ones
-already ignored. Before adding one, confirm the warning's origin is a Core file and not this integration; a warning
-about our own code stays an error. Then key the ignore to the exact message rather than the category, and say in a
-comment where it comes from and why it cannot be fixed here — a bare `DeprecationWarning` ignore also hides the next
-real deprecation.
+**Python warnings and logged Home Assistant deprecations are different.** `pyproject.toml` defines the warning
+policy. Logged deprecations only fail tests when a fixture explicitly checks the logs; this repository does not
+currently define `fail_on_deprecation_report`. Inspect `tests/conftest.py` before relying on such enforcement.
+A runtime path no test reaches still needs inspection of the Home Assistant log — see
+[`ha-modern-apis`](../ha-modern-apis/SKILL.md#fixing-a-deprecation-warning). Do not claim that aiohttp warnings are
+ignored unless the exact exception exists in `pyproject.toml`.
 
 **`asyncio_mode = "auto"`**, so async tests need no `@pytest.mark.asyncio`.
 
@@ -212,3 +203,7 @@ state and availability → service action error paths → diagnostics redaction.
 
 The remaining rules are in
 [`blueprint.tests.instructions.md`](../../instructions/blueprint.tests.instructions.md).
+
+Before relying on deprecation reports failing tests, check whether `tests/conftest.py` actually enables
+`fail_on_deprecation_report` and which warning exceptions `pyproject.toml` contains. Do not assume template
+examples describe this project's active fixtures or warning policy.

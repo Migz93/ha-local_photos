@@ -23,7 +23,7 @@ RENOVATE_CONFIG = Path(".github/renovate.json")
 MANAGERS: dict[str, tuple[list[str], re.Pattern[str]]] = {
     "mise": (
         [r"(^|/)\.?mise\.toml$", r"(^|/)\.?mise/config\.toml$"],
-        re.compile(r'^(?P<key>[A-Za-z0-9_.:@/"\'-]+)\s*=\s*(?P<value>"(?P<version>\d[^"]*)")', re.MULTILINE),
+        re.compile(r'^(?P<key>[A-Za-z0-9_.:@/"\'-]+)\s*=\s*(?P<value>"(?P<version>[~^]?\d[^"]*)")', re.MULTILINE),
     ),
     "pip_requirements": (
         [r"(^|/)[\w-]*requirements([-._]\w+)?\.(txt|pip)$"],
@@ -33,17 +33,21 @@ MANAGERS: dict[str, tuple[list[str], re.Pattern[str]]] = {
     ),
     "npm": (
         [r"(^|/)package\.json$"],
-        re.compile(r'"(?P<key>(?:@[^"/]+/)?[^"@/][^"]*)":\s*(?P<value>"(?P<version>\d[^"]*)")'),
+        re.compile(r'"(?P<key>(?:@[^"/]+/)?[^"@/][^"]*)":\s*(?P<value>"(?P<version>[~^]?\d[^"]*)")'),
+    ),
+    "devcontainer": (
+        [r"(^|/)\.devcontainer/(devcontainer|devcontainer-lock)\.json$"],
+        re.compile(r'"(?P<key>[A-Za-z0-9][A-Za-z0-9./_-]*):(?P<value>(?P<version>\d[^"@\s]*)(?:@sha256:[a-f0-9]+)?)"'),
     ),
     "github-actions": (
         [r"(^|/)(workflow-templates|\.github/(workflows|actions))/.+\.ya?ml$", r"(^|/)action\.ya?ml$"],
         re.compile(r"uses:\s*(?P<key>[^@\s]+)@(?P<value>[0-9a-f]{40}\s*#\s*(?P<version>v?\d\S*))"),
     ),
 }
-PRE_RELEASE = re.compile(r"[-._]?(dev|a|alpha|b|beta|c|rc|pre|preview)[-._]?(\d*)", re.IGNORECASE)
+PRE_RELEASE = re.compile(r"[-._]?(preview|alpha|beta|dev|pre|rc|a|b|c)(?![A-Za-z])[-._]?(\d*)", re.IGNORECASE)
 PRE_RELEASE_ORDER = {"dev": 0, "a": 1, "alpha": 1, "b": 2, "beta": 2, "c": 3, "rc": 3, "pre": 3, "preview": 3}
 
-Occurrence = tuple[str, tuple[int, int], str]
+Occurrence = tuple[str, tuple[int, int], str, tuple[str, str | None]]
 
 
 @dataclass(frozen=True, slots=True)
@@ -53,6 +57,7 @@ class Reader:
     files: tuple[re.Pattern[str], ...]
     pattern: re.Pattern[str]
     key: str | None = None
+    workflow: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -67,7 +72,7 @@ class Restore:
 
 def version_key(version: str) -> tuple[tuple[int, ...], tuple[int, int, int]] | None:
     """Order versions numerically, with a pre-release below the release it leads to; None when there is no number."""
-    match = re.match(r"[vV]?(\d+(?:\.\d+)*)(.*)", version)
+    match = re.match(r"[~^]?[vV]?(\d+(?:\.\d+)*)(.*)", version)
     if not match:
         return None
     numbers = tuple(int(part) for part in match.group(1).split("."))
@@ -102,7 +107,13 @@ def readers(settings: dict) -> list[Reader]:
         if manager in MANAGERS:
             defaults, pattern = MANAGERS[manager]
             extra = settings.get(manager, {}).get("managerFilePatterns", [])
-            found.append(Reader(tuple(renovate_pattern(file) for file in [*defaults, *extra]), pattern))
+            found.append(
+                Reader(
+                    tuple(renovate_pattern(file) for file in [*defaults, *extra]),
+                    pattern,
+                    workflow=manager == "github-actions",
+                )
+            )
     if "custom.regex" not in enabled:
         return found
     for custom in settings.get("customManagers", []):
@@ -116,6 +127,34 @@ def readers(settings: dict) -> list[Reader]:
     return found
 
 
+def workflow_location(text: str, offset: int) -> tuple[str, str | None]:
+    """Identify a workflow pin by job and the enclosing step's id or name."""
+    lines = text.splitlines(keepends=True)
+    position = 0
+    job = ""
+    step_start = 0
+    current = 0
+    for current, line in enumerate(lines):
+        if position > offset:
+            break
+        if match := re.match(r"^  ([\w-]+):", line):
+            job = match[1]
+            step_start = current
+        if re.match(r"^\s+- \w", line):
+            step_start = current
+        position += len(line)
+        if position > offset:
+            break
+    end = current + 1
+    while end < len(lines) and not re.match(r"^\s*- \w|^  [\w-]+:", lines[end]):
+        end += 1
+    block = "".join(lines[step_start:end])
+    for field in ("id", "name"):
+        if match := re.search(rf"(?m)^\s*(?:- )?{field}:\s*(.+)$", block):
+            return job, match[1].strip()
+    return job, None
+
+
 def pins(text: str, reader: Reader) -> dict[str, list[Occurrence]]:
     """Return every pin a reader finds, per dependency in file order: (version, span of the value, value)."""
     found: dict[str, list[Occurrence]] = {}
@@ -123,7 +162,8 @@ def pins(text: str, reader: Reader) -> dict[str, list[Occurrence]]:
     value, version = ("value", "version") if "value" in groups else ("currentValue", "currentValue")
     for match in reader.pattern.finditer(text):
         key = reader.key or match["key" if "key" in groups else "depName"]
-        found.setdefault(key, []).append((match[version], match.span(value), match[value]))
+        location = workflow_location(text, match.start()) if reader.workflow else ("", None)
+        found.setdefault(key, []).append((match[version], match.span(value), match[value], location))
     return found
 
 
@@ -155,12 +195,21 @@ def guard(base: str, *, fix: bool) -> list[Restore]:
         for reader in applicable:
             kept = pins(before, reader)
             for key, occurrences in pins(text, reader).items():
-                for (version, span, _), (old_version, _, old_value) in zip(
-                    occurrences, kept.get(key, []), strict=False
-                ):
-                    if lower(version, old_version):
-                        restores.append(Restore(path, key, version, old_version))
-                        replacements.add((span, old_value))
+                old_occurrences = kept.get(key, [])
+                locations = {item[3] for item in occurrences}
+                for location in locations:
+                    current_pins = [item for item in occurrences if item[3] == location]
+                    old_pins = [item for item in old_occurrences if item[3] == location]
+                    if reader.workflow and location[1] is None and old_pins and len(current_pins) != len(old_pins):
+                        raise ValueError(
+                            f"{path}: ambiguous repeated {key} pins; give workflow steps stable ids or names"
+                        )
+                    for (version, span, _, _), (old_version, _, old_value, _) in zip(
+                        current_pins, old_pins, strict=False
+                    ):
+                        if lower(version, old_version):
+                            restores.append(Restore(path, key, version, old_version))
+                            replacements.add((span, old_value))
         if fix and replacements:
             for (start, end), value in sorted(replacements, reverse=True):
                 text = text[:start] + value + text[end:]
@@ -193,7 +242,11 @@ def main(argv: list[str]) -> int:
     if len(args) != 1:
         print("usage: version_guard.py <base-ref> [--check]", file=sys.stderr)
         return 2
-    restores = guard(args[0], fix=fix)
+    try:
+        restores = guard(args[0], fix=fix)
+    except ValueError as err:
+        print(str(err), file=sys.stderr)
+        return 2
     if restores:
         print(report(restores, fix=fix), end="")
     return 1 if restores and not fix else 0

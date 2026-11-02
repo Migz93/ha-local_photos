@@ -47,12 +47,9 @@ tests/
 
 ## Fixtures
 
-**Defined in `tests/conftest.py`** — use these names, never a per-file variant:
-
-- `auto_enable_custom_integrations` - autouse wrapper around `enable_custom_integrations`
-- `config_entry` - `MockConfigEntry`, not yet added to `hass`
-- `mock_api` - the mocked data source, patched where the integration imports it
-- `init_integration` - `config_entry` set up with `mock_api` active, returned loaded
+**Inspect `tests/conftest.py` first.** This repository defines `auto_enable_custom_integrations` there.
+`config_entry`, `mock_api`, and `init_integration` are suggested fixture roles, not provided fixture names:
+define only the shared fixtures the integration tests actually need.
 
 **No `coordinator` fixture.** A test that builds or patches the coordinator couples itself to its constructor and
 internals; mock the client and let setup build the coordinator, then assert through `hass.states`.
@@ -154,3 +151,6 @@ Coordinator logic, config flow validation, error handling, entity state calculat
 
 [Home Assistant Core's own tests](https://github.com/home-assistant/core/tree/dev/tests/components) are the reference
 for a pattern this file does not cover.
+
+Fixture examples are illustrative, not a claim that this project defines them. Inspect `tests/conftest.py`
+before using `config_entry`, `mock_api`, or `init_integration`; define only the fixtures the test actually needs.

@@ -95,19 +95,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: {ClassPrefix}ConfigEntry
 The client calls `await session.async_ensure_token_valid()` before each request and reads
 `session.token["access_token"]`.
 
-**Let the OAuth2 errors propagate**
-([`blueprint.coordinator`](../../../instructions/blueprint.coordinator.instructions.md)). Everything the helper raises
-is already a config entry exception with a translated message, imported from `homeassistant.exceptions`.
-`UnknownImplementationError` and `OAuth2TokenRequestReauthError` are `ConfigEntryAuthFailed` (reauth starts);
-`ImplementationUnavailableError` and the other `OAuth2TokenRequest*Error` classes are `ConfigEntryNotReady` (setup is
-retried). With a coordinator, they arrive as a failed refresh and are handled the same way.
+**Map OAuth2 failures for Home Assistant 2026.8.0.**
 
-- Never catch `ValueError` around `async_get_config_entry_implementation` — `UnknownImplementationError` subclasses
-  it for compatibility, and the handler would swallow the reauth. Catch one specifically only to do something different, such as raising
-  `ConfigEntryError` for a status that is permanent for this service.
-- No `exceptions` translation keys for them; Home Assistant ships the text.
-- Without a coordinator, `await session.async_ensure_token_valid()` in `async_setup_entry` is the
-  `test-before-setup` check.
+On this baseline, resolving an unavailable implementation can raise `ValueError`, and token-refresh failures are
+not all config-entry exceptions. Handle failures where the client is set up: map missing/invalid credentials and
+HTTP 401/403 to `ConfigEntryAuthFailed`, and timeouts, connection failures, or temporary service errors to
+`ConfigEntryNotReady`. Do not catch these broadly and turn invalid credentials into an endless retry.
+
+Newer central OAuth2 exception mapping must not be assumed on 2026.8. Verify the installed helper's actual exception
+classes before choosing catches; do not import newer `OAuth2TokenRequest*Error` classes into this baseline.
 
 ## 5. Translations
 

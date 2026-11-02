@@ -98,19 +98,9 @@ Two rules that catch most mistakes:
 
 ## Abort reasons Home Assistant translates itself
 
-These carry their own text, so they need no `config.abort` key — but only when Home Assistant raises them. A flow that
-calls `async_abort(reason=…)` with one of them itself passes `translation_domain="homeassistant"` or keeps its own key.
-
-| Reason                                        | Raised by                                                                               |
-| --------------------------------------------- | --------------------------------------------------------------------------------------- |
-| `reauth_successful`, `reconfigure_successful` | `async_update_reload_and_abort()` / `async_update_and_abort()` when `reason` is omitted |
-| `already_in_progress`                         | `async_set_unique_id()`                                                                 |
-| `single_instance_allowed`                     | the `single_config_entry` manifest check                                                |
-| `no_devices_found`                            | the `DiscoveryFlowHandler` helper in `config_entry_flow`                                |
-
-`AbstractOAuth2FlowHandler` adds `authorize_url_timeout`, `missing_credentials`, `no_url_available`, `oauth_error`,
-`oauth_failed`, `oauth_implementation_unavailable`, `oauth_timeout`, `oauth_unauthorized` and
-`user_rejected_authorize` — for any `async_abort` on it without a `translation_domain`, including your own.
+On Home Assistant 2026.8.0, keep the integration's own `config.abort` translations for reasons it returns.
+`async_abort()` has no `translation_domain` argument on that baseline. Do not remove translation keys on the
+assumption that a shared core or OAuth2 domain supplies them. Newer shared-domain behaviour must be version-gated.
 
 `already_configured` is not one of them — it needs a key. Neither is the OAuth2 handler's `missing_configuration`.
 

@@ -90,23 +90,24 @@ Define in `api/__init__.py`:
   only knows the base still catches it
 
 **Mapping:** HTTP 401/403 → Auth, HTTP 429 → RateLimit with the `Retry-After` seconds (a client default when the
-header is missing or a date), Timeout/ClientError → Communication
+header is missing or invalid; convert valid HTTP-date values to a delay), Timeout/ClientError → Communication
 
 ## Error Handling in `_async_update_data()`
 
 Translate API exceptions into Home Assistant ones here, and only here:
 
-| API Exception         | Raise                                       | Home Assistant Behavior     |
-| --------------------- | ------------------------------------------- | --------------------------- |
-| `AuthenticationError` | `ConfigEntryAuthFailed`                     | Triggers reauth flow        |
-| `RateLimitError`      | `UpdateFailed(retry_after=err.retry_after)` | Next poll waits that long   |
-| `CommunicationError`  | `UpdateFailed("message")`                   | Retry at the usual interval |
+| API Exception         | Raise                                    | Home Assistant Behavior     |
+| --------------------- | ---------------------------------------- | --------------------------- |
+| `AuthenticationError` | `ConfigEntryAuthFailed`                  | Triggers reauth flow        |
+| `RateLimitError`      | `UpdateFailed("rate limited")` on 2026.8 | Next poll waits that long   |
+| `CommunicationError`  | `UpdateFailed("message")`                | Retry at the usual interval |
 
 Catch `RateLimitError` before the communication error it subclasses. During `async_config_entry_first_refresh()`
 Home Assistant honours `retry_after` only (HA 2026.11+); on the current minimum a rate limit at setup retries on the
 `ConfigEntryNotReady` backoff.
-Bound the wait before passing it on — at least a few seconds, at most the update interval — so `Retry-After: 0` does
-not poll in a loop and a huge value does not stop polling.
+Avoid a zero-delay loop, but do not cap a valid server delay at the normal poll interval.
+`UpdateFailed(retry_after=...)` is newer than the supported 2026.8.0 baseline: on 2026.8, raise
+`UpdateFailed("rate limited")` and retain the server cooldown in the API client before making another request.
 
 **Import from:** `homeassistant.exceptions.ConfigEntryAuthFailed`,
 `homeassistant.helpers.update_coordinator.UpdateFailed`

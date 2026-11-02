@@ -100,3 +100,20 @@ def test_refuses_while_initialize_script_exists(repo: Path) -> None:
 
     assert result.returncode == 1
     assert all((repo / name).exists() for name in PRUNED)
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "text",
+    [
+        "before\n<!-- blueprint-only:start -->\nkeep me\n",
+        "<!-- blueprint-only:end -->\n<!-- blueprint-only:start -->\n",
+    ],
+)
+def test_malformed_section_changes_nothing(repo: Path, text: str) -> None:
+    """An incomplete or reversed marker pair must not delete README content or other files."""
+    (repo / SECTION_FILE).write_text(text, encoding="utf-8")
+    result = _run(repo, "--apply")
+    assert result.returncode != 0
+    assert (repo / SECTION_FILE).read_text(encoding="utf-8") == text
+    assert all((repo / name).exists() for name in (*PRUNED, *PROJECT_OWNED))

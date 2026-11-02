@@ -89,6 +89,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          set -euo pipefail
           {
             row='"| `\(.key)` | \(.value.requested // .value.current) | \(.value.latest) |"'
             # The tools are not installed here, so mise lists every one; only a set bump is a newer release.

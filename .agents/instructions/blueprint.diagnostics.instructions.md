@@ -25,6 +25,12 @@ TO_REDACT = {
     "api_key",
     "token",
     "refresh_token",
+    "access_token",
+    "latitude",
+    "longitude",
+    "email",
+    "serial_number",
+    "mac",
 }
 
 async def async_get_config_entry_diagnostics(
@@ -41,7 +47,8 @@ async def async_get_config_entry_diagnostics(
     }
 ```
 
-**The coordinator data is redacted too.** An API payload usually holds more than the entities show — serials,
+**The coordinator data is redacted too.** This list is a starting point: inspect the real payload and add every
+integration-specific sensitive key before publishing diagnostics. An API payload usually holds more than the entities show — serials,
 coordinates, account names — and users post this file in public issues. Read the real output once, not just the code.
 
 A device or entity registry entry goes in through `device_entry_as_dict()` / `entity_entry_as_dict()` from

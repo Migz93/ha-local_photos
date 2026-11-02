@@ -160,6 +160,8 @@ if pytest_ha is not None:
             python_minimums[f"homeassistant=={pytest_ha} requires-python"] = hm.group(1)
 
 if mise_python is not None:
+    if re.search(r"(?:a|b|rc|dev)\d*", mise_python, re.IGNORECASE):
+        fail("mise.toml must pin a final Python release for the supported Home Assistant baseline")
     pinned = version_tuple(mise_python)
     if not pinned:
         fail(f"mise.toml pins python {mise_python!r}, which names no version to check against requires-python")

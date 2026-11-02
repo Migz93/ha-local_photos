@@ -31,10 +31,7 @@ if [[ -t 0 ]]; then
     dir="$PWD"
 else
     input="$(cat || true)"
-    re='"cwd"[[:space:]]*:[[:space:]]*"([^"]*)"'
-    if [[ $input =~ $re ]]; then
-        dir="${BASH_REMATCH[1]}"
-    fi
+    dir=$(printf '%s' "$input" | python3 -c 'import json, sys; value=json.load(sys.stdin); print(value.get("cwd", "") if isinstance(value, dict) else "")' 2>/dev/null) || dir=""
 fi
 
 note() {

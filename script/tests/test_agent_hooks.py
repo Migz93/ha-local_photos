@@ -18,7 +18,10 @@ def _initialize_repository(path: Path, *, config: str | None = CONFIG, hook_inst
     if config is not None:
         (path / ".pre-commit-config.yaml").write_text(config, encoding="utf-8")
     if hook_installed:
-        (path / ".git" / "hooks" / "pre-push").write_text("#!/bin/sh\n", encoding="utf-8")
+        (path / ".git" / "hooks" / "pre-push").write_text(
+            '#!/bin/sh\nexec "$PWD/script/pre-push" "$@"\n', encoding="utf-8"
+        )
+        (path / ".git" / "hooks" / "pre-push").chmod(0o755)
 
 
 @pytest.fixture
@@ -89,6 +92,15 @@ def test_allows_a_push_the_git_hook_checks(repository: Path, command: str) -> No
     "command",
     [
         "git push --no-verify",
+        "env -u HOME git push --no-verify",
+        "sudo -u dev git push --no-verify",
+        "timeout 60 git push --no-verify",
+        "/usr/bin/env git push --no-verify",
+        "nice -n 5 git push --no-verify",
+        "xargs git push --no-verify",
+        "HP=/dev/null git --config-env=core.hooksPath=HP push",
+        'out="$(git push --no-verify 2>&1)"',
+        'cd "$(git push --no-verify)"',
         "git push --no-ver''ify origin main",
         'git push "--no-verify"',
         "git -c core.hooksPath=/dev/null push",
@@ -191,3 +203,47 @@ def test_blocks_invalid_payload(tmp_path: Path) -> None:
 def test_finds_a_push_behind_shell_syntax(repository: Path, command: str) -> None:
     """A push hidden behind newlines, subshells, keywords, substitutions or quoting is still inspected."""
     assert _explain(command, repository) == _other_refs("--all")
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "config",
+    ["default_install_hook_types:\n  - pre-commit\n  - pre-push\n", "default_install_hook_types:\n- pre-push\n"],
+)
+def test_accepts_block_style_hook_stages(tmp_path: Path, config: str) -> None:
+    """Valid YAML block lists install the same stage as inline lists."""
+    repository = tmp_path / "repository"
+    _initialize_repository(repository, config=config)
+    assert _explain("git push", repository) == "ALLOW"
+
+
+@pytest.mark.unit
+def test_comments_do_not_install_a_stage(tmp_path: Path) -> None:
+    """A stage mentioned only in a comment is not configured."""
+    repository = tmp_path / "repository"
+    _initialize_repository(repository, config="default_install_hook_types: [pre-commit] # pre-push\n")
+    assert _explain("git push", repository).startswith("BLOCK this repository does not install")
+
+
+@pytest.mark.unit
+def test_checks_chained_directories_and_git_c_options(tmp_path: Path) -> None:
+    """Both shell cd and Git -C compose relative directory changes."""
+    repository = tmp_path / "a" / "b"
+    _initialize_repository(repository, hook_installed=False)
+    for command in ("cd a && cd b && git push", "git -C a -C b push"):
+        assert _explain(command, tmp_path).startswith("BLOCK git's pre-push hook is not installed")
+
+
+@pytest.mark.unit
+def test_rejects_non_executable_hook(repository: Path) -> None:
+    """An inert hook file cannot establish that Git will run the gate."""
+    (repository / ".git/hooks/pre-push").chmod(0o644)
+    assert _explain("git push", repository).startswith("BLOCK git's pre-push hook is not installed")
+
+
+@pytest.mark.unit
+def test_rejects_non_object_payload(tmp_path: Path) -> None:
+    """Unexpected payload shapes fail closed rather than exiting with a nonblocking traceback."""
+    result = subprocess.run(["bash", str(HOOK)], cwd=tmp_path, input="[]", capture_output=True, text=True, check=False)
+    assert result.returncode == 2
+    assert "cannot inspect" in result.stderr

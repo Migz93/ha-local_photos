@@ -22,7 +22,7 @@ the HACS validation in `validate.yml` stops skipping its `brands` check.
 
 ## `root-gitignore` — 2026-11-02
 
-**Check:** `grep -qE '^![^/]+/$' custom_components/.gitignore && ! grep -qxF '.gitignore' .templatesyncignore`
+**Check:** `domain="<domain>"; grep -qxF "!${domain}/" custom_components/.gitignore && ! grep -qxF ".gitignore" .templatesyncignore` (substitute the actual integration domain first)
 
 The root `.gitignore` is now template-synced and no longer generated from toptal, whose unanchored patterns such as
 `image`, `tts` and `lib` hid integration platforms of that name. Opt in in this order: first create
@@ -33,7 +33,7 @@ Move anything this repository added to its root `.gitignore` into `custom_compon
 
 ## `squash-pull-requests` — 2026-11-01
 
-**Check:** `gh api "repos/{owner}/{repo}" --jq '.allow_merge_commit == false' | grep -q true`
+**Check:** `gh api "repos/{owner}/{repo}" --jq '.allow_merge_commit == false and .allow_squash_merge == true' | grep -q true`
 
 The blueprint's `main` ruleset now takes every change through a pull request, admins included — squash by default,
 rebase for a pull request whose commits each pass the commit rules — and a new workflow `pr-title.yml` checks the
@@ -44,7 +44,7 @@ blueprint and record the step as skipped.
 
 ## `lint-and-test-check` — 2026-11-01
 
-**Check:** `! gh api "repos/{owner}/{repo}/rules/branches/main" --jq '.[].parameters.required_status_checks[]?.context' 2>/dev/null | grep -qx Ruff`
+**Check:** `contexts=$(gh api "repos/{owner}/{repo}/rules/branches/main" --jq '.[].parameters.required_status_checks[]?.context') && ! grep -qx Ruff <<<"$contexts"`
 
 The lint workflow's job is now called _Lint and test_ and also runs `script/type-check` and `script/test`. A ruleset
 or branch protection that still requires the old `Ruff` check waits for it forever and blocks every pull request:

@@ -123,6 +123,8 @@ class MyRepairFlow(RepairsFlow):
     async def async_step_init(self, user_input=None) -> RepairsFlowResult:
         if user_input is not None:
             entry = self.hass.config_entries.async_get_entry(str(self.data["entry_id"]))
+            if entry is None:
+                return self.async_abort(reason="entry_removed")
             # Apply the fix to entry, then:
             self.hass.config_entries.async_schedule_reload(entry.entry_id)
             return self.async_create_entry(data={})
@@ -138,14 +140,17 @@ The form mechanics are Data Entry Flow's and are identical to the config flow's 
 [`blueprint.config_flow`](blueprint.config_flow.instructions.md). What differs here: `async_create_entry(data={})`
 always takes an **empty** dict, and it removes the issue on its own.
 
-**Redirecting to reauth** — start the flow, then finish; the issue goes with the `create_entry`:
+**Redirecting to reauth** — keep the issue until credentials have actually been fixed. Define translations for
+`entry_removed` and `reauth_started`, and delete the issue only in the successful reauthentication step:
 
 ```python
 async def async_step_init(self, user_input=None):
     if user_input is not None:
         entry = self.hass.config_entries.async_get_entry(str(self.data["entry_id"]))
+        if entry is None:
+            return self.async_abort(reason="entry_removed")
         entry.async_start_reauth(self.hass)
-        return self.async_create_entry(data={})
+        return self.async_abort(reason="reauth_started")
     return self.async_show_form(step_id="init")
 ```
 

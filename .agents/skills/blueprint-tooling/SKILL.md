@@ -141,14 +141,16 @@ Assistant design constraint, not a repository quirk.
    same imports.
 3. `script/setup/bootstrap` (or a container rebuild) to install it.
 
-Pin versions in both, and keep them identical. Renovate raises the two files in one pull request; Dependabot skips
-`requirements.txt` on purpose, because it cannot see `manifest.json` and would split the pair.
+Pin versions in both and synchronise them manually when reviewing Dependabot runtime updates. Renovate is disabled
+in this repository; no bot currently pairs the manifest and requirements updates. Keep
+`pytest-homeassistant-custom-component==0.13.354` aligned with Home Assistant 2026.8.0, and update it only in a
+separate, deliberate baseline change. `requirements_test.txt` is project-owned and excluded from template sync.
 
 | File                     | Template sync  | Contents                                         |
 | ------------------------ | -------------- | ------------------------------------------------ |
 | `requirements.txt`       | ❌ excluded    | your integration's runtime dependencies          |
 | `requirements_dev.txt`   | ✅ synced      | shared development tooling — do not add app deps |
-| `requirements_test.txt`  | ✅ synced      | shared test dependencies                         |
+| `requirements_test.txt`  | ❌ excluded    | shared test dependencies                         |
 | `requirements.local.txt` | — (gitignored) | your personal extras (`ipdb`, profilers, …)      |
 
 Before adding a dependency at all, decide whether you want it: the criteria are in `AGENTS.md` § Custom Integration

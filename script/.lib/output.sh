@@ -191,11 +191,20 @@ run_state() {
 # Record this script's run in .local/<name>.status and .local/<name>.pid, and its outcome when it exits. With
 # --exclusive, a second run while one is alive stops instead of competing for the same environment.
 track_run() {
-    local name=$1
-    if [[ ${2:-} == "--exclusive" && "$(run_state "$name")" == "running" ]]; then
-        die "script/setup/$name is already running (PID $(cat ".local/$name.pid")); wait for it to finish"
-    fi
+    local name=$1 mode=${2:-} lock waited=0
     mkdir -p .local
+    lock=".local/$name.lock"
+    if [[ $mode == "--exclusive" && "$(run_state "$name")" == "running" ]]; then
+        die "script/setup/$name is already running; wait for it to finish"
+    fi
+    while ! mkdir "$lock" 2>/dev/null; do
+        if [[ $mode != "--wait" || $waited -ge 900 ]]; then
+            die "script/setup/$name is already running or its lock needs inspection: $lock"
+        fi
+        sleep 1
+        waited=$((waited + 1))
+    done
+    echo "$$" >"$lock/pid"
     echo "$$" >".local/$name.pid"
     echo "running" >".local/$name.status"
     # shellcheck disable=SC2064 # $name is fixed now, the exit status when the trap runs
@@ -223,7 +232,8 @@ _finish_run() {
     else
         echo "failed" >".local/$1.status"
     fi
-    rm -f ".local/$1.pid"
+    rm -f ".local/$1.pid" ".local/$1.lock/pid"
+    rmdir ".local/$1.lock" 2>/dev/null || true
 }
 
 # Apply what mise resolves for this checkout: the pinned tools and the venv mise.toml names, in front of PATH. Every

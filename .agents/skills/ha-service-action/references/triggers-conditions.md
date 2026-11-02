@@ -34,7 +34,7 @@ conditions:
 ## Trigger
 
 ```python
-import probatio
+import voluptuous as vol
 
 from homeassistant.const import ATTR_DEVICE_ID, CONF_OPTIONS
 from homeassistant.core import CALLBACK_TYPE, HomeAssistant, callback
@@ -48,10 +48,10 @@ from homeassistant.helpers.trigger import (
 )
 from homeassistant.helpers.typing import ConfigType
 
-_SCHEMA = probatio.Schema(
+_SCHEMA = vol.Schema(
     {
-        probatio.Required(CONF_OPTIONS): {
-            probatio.Required(ATTR_DEVICE_ID): probatio.All(cv.ensure_list, [cv.string]),
+        vol.Required(CONF_OPTIONS): {
+            vol.Required(ATTR_DEVICE_ID): vol.All(cv.ensure_list, [cv.string]),
         },
     },
 )
