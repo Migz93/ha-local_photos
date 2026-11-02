@@ -7,6 +7,8 @@ on:
   pull_request:
     branches:
       - "main"
+    # A draft spends no minutes; marking it ready for review runs everything.
+    types: [opened, synchronize, reopened, ready_for_review]
 
 permissions: {}
 
@@ -20,51 +22,127 @@ concurrency:
 # - validate.yml (if added in the future)
 
 jobs:
-  ruff:
-    name: "Ruff"
-    runs-on: "ubuntu-latest"
+  lint:
+    name: "Lint and test"
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
+    runs-on: ubuntu-26.04
+    timeout-minutes: 30
     permissions:
       contents: read # check out the repository
+      pull-requests: read # find the pull request a push to main came from
+      checks: read # see whether that pull request already passed this job
     steps:
       - name: Checkout the repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          # The secret scan reads every commit the pull request adds.
+          fetch-depth: 0
 
-      - name: Set up Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
-        with:
-          python-version: "3.14"
+      # A squash merge puts on main exactly what the pull request tested when the two trees match, so the run after the
+      # merge would repeat it. Pull requests opened with the workflow token never ran this job and are checked here.
+      - name: Skip what the pull request already tested
+        id: tested
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+        run: |
+          pr=$(gh api "repos/${GITHUB_REPOSITORY}/commits/${SHA}/pulls" --jq '[.[] | select(.merged_at)][0].number // empty')
+          if [[ -z "${pr}" ]]; then
+            echo "No merged pull request behind ${SHA} — running everything"
+            exit 0
+          fi
+          head=$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${pr}" --jq .head.sha)
+          git fetch --quiet origin "pull/${pr}/head"
+          passed=$(gh api "repos/${GITHUB_REPOSITORY}/commits/${head}/check-runs?check_name=Lint%20and%20test" \
+            --jq '[.check_runs[] | select(.conclusion == "success")] | length')
+          if [[ "$(git rev-parse "${SHA}^{tree}")" == "$(git rev-parse "FETCH_HEAD^{tree}")" && "${passed}" -gt 0 ]]; then
+            echo "Pull request #${pr} passed this job on the same tree — nothing left to check" >> "${GITHUB_STEP_SUMMARY}"
+            echo "done=true" >> "${GITHUB_OUTPUT}"
+          else
+            echo "Pull request #${pr} was not tested on this exact tree — running everything"
+          fi
 
-      - name: Install uv
-        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+      # A change that touches nothing but Markdown cannot affect types or tests, so it skips installing Home Assistant.
+      - name: Detect a documentation-only change
+        id: docs
+        if: steps.tested.outputs.done != 'true'
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+          HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          if [[ -z "${BASE}" || "${BASE}" == "0000000000000000000000000000000000000000" ]]; then
+            echo "No base to compare with — running everything"
+            exit 0
+          fi
+          if ! changed=$(git diff --name-only "${BASE}...${HEAD}"); then
+            echo "Cannot compare ${BASE} with ${HEAD} — running everything"
+            exit 0
+          fi
+          if [[ -n "${changed}" ]] && ! grep -qv '\.md$' <<<"${changed}"; then
+            echo "Only Markdown changed — no Home Assistant install, type check or tests" >> "${GITHUB_STEP_SUMMARY}"
+            echo "only=true" >> "${GITHUB_OUTPUT}"
+          fi
+
+      - name: Set up mise
+        if: steps.tested.outputs.done != 'true'
+        uses: jdx/mise-action@6be3c7ed4c21d4f76b208d351d95aac273ebb76d # v5.2.4
         with:
-          version: "0.9.3"
-          enable-cache: true
-          cache-dependency-glob: "**/requirements*.txt"
+          # renovate: datasource=github-releases depName=jdx/mise extractVersion=^v(?<version>.+)$
+          version: "2026.10.22"
+
+      # A step rather than a job of its own: the scan takes seconds, and every job is billed in whole minutes.
+      - name: Scan for secrets
+        if: steps.tested.outputs.done != 'true'
+        env:
+          # A pull request's commits, or what a push added; the weekly history scan covers everything older.
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+          HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          if [[ -n "${BASE}" && "${BASE}" != "0000000000000000000000000000000000000000" ]]; then
+            script/secret-scan --range "${BASE}..${HEAD}"
+          else
+            script/secret-scan --all
+          fi
+
+      - name: Check the documentation
+        if: steps.docs.outputs.only == 'true'
+        run: |
+          npm ci --silent
+          script/markdown-check
+          script/skills-check
 
       - name: Get Home Assistant version
+        if: steps.tested.outputs.done != 'true' && steps.docs.outputs.only != 'true'
         id: ha_version
         run: |
-          HA_VERSION=$(grep '"homeassistant"' hacs.json | head -1 | sed 's/.*"homeassistant"\s*:\s*"\([^"]*\)".*/\1/')
-          echo "HA_VERSION=${HA_VERSION}" >> $GITHUB_OUTPUT
-          echo "Home Assistant version: ${HA_VERSION}"
+          version=$(bash script/.lib/ha_version.sh)
+          echo "HA_VERSION=${version}" >>"$GITHUB_OUTPUT"
 
       - name: Cache Home Assistant installation
+        if: steps.tested.outputs.done != 'true' && steps.docs.outputs.only != 'true'
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             .local/ha-venv
-          key: ha-venv-${{ runner.os }}-py314-ha${{ steps.ha_version.outputs.HA_VERSION }}-${{ hashFiles('**/requirements*.txt') }}
+          key: ha-venv-${{ runner.os }}-ha${{ steps.ha_version.outputs.HA_VERSION }}-${{ hashFiles('mise.toml', '.config/mise/conf.d/*.toml', '**/requirements*.txt') }}
           restore-keys: |
-            ha-venv-${{ runner.os }}-py314-ha${{ steps.ha_version.outputs.HA_VERSION }}-
-            ha-venv-${{ runner.os }}-py314-
-
-      - name: Install shfmt
-        run: sudo apt-get install -y shfmt
+            ha-venv-${{ runner.os }}-ha${{ steps.ha_version.outputs.HA_VERSION }}-
 
       - name: Install requirements
+        if: steps.tested.outputs.done != 'true' && steps.docs.outputs.only != 'true'
         run: script/setup/bootstrap
 
+      # Lint, types and tests share one job: each would otherwise install the same venv and Home Assistant again.
       - name: Lint check
+        if: steps.tested.outputs.done != 'true' && steps.docs.outputs.only != 'true'
         run: script/lint-check
+
+      - name: Type check
+        if: steps.tested.outputs.done != 'true' && steps.docs.outputs.only != 'true'
+        run: script/type-check
+
+      - name: Tests
+        if: steps.tested.outputs.done != 'true' && steps.docs.outputs.only != 'true'
+        run: script/test
