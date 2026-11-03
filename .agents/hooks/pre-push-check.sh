@@ -112,6 +112,8 @@ def split_commands(command):
         elif char in SEPARATORS:
             end_word()
             redirection = ""
+            if char in "()":
+                commands.append([char])
             commands.append([])
             if char == "\n":
                 index += 1
@@ -165,11 +167,13 @@ def first_executable(words, cwd):
     """Find a wrapped executable and its working directory without running shell text."""
     index = 0
     directory = cwd
+    repository_override = False
     prefix_values = {"command": set(), "time": {"-o", "--output", "-f", "--format"}, "exec": {"-a"}}
     while index < len(words):
         word = words[index]
         executable = os.path.basename(word)
         if ASSIGNMENT.fullmatch(word):
+            repository_override |= selects_git_repository(word)
             index += 1
             continue
         if word in COMMAND_PREFIXES or executable in prefix_values:
@@ -181,7 +185,7 @@ def first_executable(words, cwd):
                     break
             continue
         if executable not in WRAPPER_VALUES:
-            return index, directory
+            return index, directory, repository_override
         index += 1
         while index < len(words):
             option = words[index]
@@ -201,6 +205,7 @@ def first_executable(words, cwd):
                     index += 1
                 directory = os.path.join(directory, os.path.expandvars(os.path.expanduser(target)))
             elif executable == "env" and ASSIGNMENT.fullmatch(option):
+                repository_override |= selects_git_repository(option)
                 index += 1
             elif option.startswith("-"):
                 index += 2 if option in WRAPPER_VALUES[executable] else 1
@@ -208,7 +213,7 @@ def first_executable(words, cwd):
                 break
         if executable == "timeout" and index < len(words):
             index += 1
-    return index, directory
+    return index, directory, repository_override
 
 
 GIT_OPTIONS_WITH_VALUES = {"-C", "-c", "--config-env", "--exec-path", "--git-dir", "--namespace", "--work-tree"}
@@ -226,13 +231,21 @@ def sets_hooks_path(word):
     return "hookspath" in word.lower()
 
 
-def inspect_git(words, index, cwd):
+def selects_git_repository(word):
+    """Repository/configuration overrides cannot borrow the caller's hook validation."""
+    name = word.partition("=")[0]
+    return name in {"GIT_DIR", "GIT_COMMON_DIR", "GIT_WORK_TREE"} or name.startswith("GIT_CONFIG")
+
+
+def inspect_git(words, index, cwd, repository_override=False):
     """Return a block reason for one git command, the directory it pushes from, or None for anything else."""
     git_dir = ""
     configs = []
     index += 1
     while index < len(words) and words[index].startswith("-"):
         option = words[index]
+        if option in {"--git-dir", "--work-tree", "--namespace", "--bare"} or option.startswith(("--git-dir=", "--work-tree=", "--namespace=")):
+            repository_override = True
         if option.startswith("--config-env="):
             configs.append(option.partition("=")[2].lower())
         elif option.startswith("-c") and option != "-c":
@@ -258,6 +271,8 @@ def inspect_git(words, index, cwd):
         return None
     if subcommand != "push":
         return None
+    if repository_override:
+        return {"status": "block", "reason": "repository overrides cannot be validated; use git -C with a normal checkout"}
     if any(config.startswith("push.followtags") for config in configs):
         return {"status": "block", "reason": other_refs("push.followTags")}
 
@@ -285,14 +300,14 @@ def inspect_git(words, index, cwd):
     return {"status": "push", "directory": directory}
 
 
-def inspect_nested(command, cwd, depth, kind):
+def inspect_nested(command, cwd, depth, kind, repository_override=False):
     """Inspect a command embedded in another one, refusing to nest deeper than the limit."""
     if depth >= MAX_NESTING:
         return {"status": "block", "reason": f"{kind} nesting exceeds the inspection limit"}
-    return inspect(command, cwd, depth + 1)
+    return inspect(command, cwd, depth + 1, repository_override)
 
 
-def inspect(command, cwd, depth=0):
+def inspect(command, cwd, depth=0, repository_override=False):
     """Return the first block reason in a command line, or the directories its pushes start from."""
     try:
         segments = split_commands(command)
@@ -301,18 +316,30 @@ def inspect(command, cwd, depth=0):
 
     pushes = []
     chain_dir = ""
+    scopes = []
     for words in segments:
+        if words == ["("]:
+            scopes.append((chain_dir, repository_override))
+            continue
+        if words == [")"]:
+            if not scopes:
+                return {"status": "block", "reason": "unmatched subshell parenthesis"}
+            chain_dir, repository_override = scopes.pop()
+            continue
         nested = [word for word in words if "$(" in word or "`" in word]
         if any(word.startswith("GIT_CONFIG") and sets_hooks_path(word) for word in words):
             return {"status": "block", "reason": BYPASS}
 
         for inner in nested:
-            result = inspect_nested(inner, chain_dir or cwd, depth, "command")
+            result = inspect_nested(inner, chain_dir or cwd, depth, "command", repository_override)
             if result["status"] == "block":
                 return result
             pushes += result.get("directories", [])
         nested = []
-        index, effective_cwd = first_executable(words, chain_dir or cwd)
+        index, effective_cwd, invocation_override = first_executable(words, chain_dir or cwd)
+        if index == len(words) or (index < len(words) and words[index] in {"export", "declare", "readonly"}):
+            repository_override |= any(selects_git_repository(word) for word in words if ASSIGNMENT.fullmatch(word))
+        invocation_override |= repository_override
         if index >= len(words):
             continue
         executable = os.path.basename(words[index])
@@ -331,17 +358,19 @@ def inspect(command, cwd, depth=0):
         elif executable == "eval":
             nested.append(" ".join(words[index + 1 :]))
         elif executable == "git":
-            result = inspect_git(words, index, effective_cwd)
+            result = inspect_git(words, index, effective_cwd, invocation_override)
             if result and result["status"] == "block":
                 return result
             if result:
                 pushes.append(result["directory"])
 
         for inner in nested:
-            result = inspect_nested(inner, effective_cwd, depth, "command")
+            result = inspect_nested(inner, effective_cwd, depth, "command", invocation_override)
             if result["status"] == "block":
                 return result
             pushes += result.get("directories", [])
+    if scopes:
+        return {"status": "block", "reason": "unclosed subshell parenthesis"}
     return {"status": "allow", "directories": pushes}
 
 

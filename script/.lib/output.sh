@@ -205,8 +205,18 @@ track_run() {
         else
             flock --exclusive --nonblock 9 || die "script/setup/$name is already running"
         fi
+    elif command -v perl >/dev/null 2>&1; then
+        # macOS ships Perl and Fcntl, so a fresh machine does not need Python before toolchain setup.
+        perl -MFcntl=:flock -e '
+            open(my $lock, ">&=9") or die "Cannot open setup lock: $!";
+            my $remaining = $ARGV[0] eq "--wait" ? 900 : 0;
+            while (!flock($lock, LOCK_EX | LOCK_NB)) {
+                exit 1 unless $remaining--;
+                sleep 1;
+            }
+        ' -- "$mode" || die "script/setup/$name is already running or its lock could not be acquired"
     else
-        # macOS has no flock command; Python's stdlib exposes the same kernel lock.
+        # Other Unix hosts can use Python's stdlib when neither flock nor system Perl is available.
         python3 - "$mode" <<'LOCK_RUN' || die "script/setup/$name is already running or its lock could not be acquired"
 import fcntl
 import sys

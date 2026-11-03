@@ -96,19 +96,16 @@ header is missing or invalid; convert valid HTTP-date values to a delay), Timeou
 
 Translate API exceptions into Home Assistant ones here, and only here:
 
-| API Exception         | Raise                                       | Home Assistant Behavior     |
-| --------------------- | ------------------------------------------- | --------------------------- |
-| `AuthenticationError` | `ConfigEntryAuthFailed`                     | Triggers reauth flow        |
-| `RateLimitError`      | `UpdateFailed(retry_after=err.retry_after)` | Next poll waits that long   |
-| `CommunicationError`  | `UpdateFailed("message")`                   | Retry at the usual interval |
+| API Exception         | Raise                                                 | Home Assistant Behavior     |
+| --------------------- | ----------------------------------------------------- | --------------------------- |
+| `AuthenticationError` | `ConfigEntryAuthFailed`                               | Triggers reauth flow        |
+| `RateLimitError`      | `UpdateFailed(str(err), retry_after=err.retry_after)` | Next poll waits that long   |
+| `CommunicationError`  | `UpdateFailed("message")`                             | Retry at the usual interval |
 
-Catch `RateLimitError` before the communication error it subclasses. During `async_config_entry_first_refresh()`
-Home Assistant honours `retry_after` only (HA 2026.11+); on the current minimum a rate limit at setup retries on the
-`ConfigEntryNotReady` backoff.
+Catch `RateLimitError` before the communication error it subclasses. Home Assistant 2026.8.0 supports
+`UpdateFailed(retry_after=...)` for normal refresh scheduling. During `async_config_entry_first_refresh()`,
+honouring that delay requires HA 2026.11+; on the current minimum, setup uses the `ConfigEntryNotReady` backoff.
 Avoid a zero-delay loop, but do not cap a valid server delay at the normal poll interval.
-Home Assistant 2026.8.0 supports `UpdateFailed(retry_after=...)` for normal refresh scheduling.
-The first-refresh/setup path still uses the `ConfigEntryNotReady` backoff; do not confuse that limitation
-with support for `retry_after` during subsequent updates.
 
 **Import from:** `homeassistant.exceptions.ConfigEntryAuthFailed`,
 `homeassistant.helpers.update_coordinator.UpdateFailed`

@@ -1,5 +1,7 @@
 """Tests for script/.lib/output.sh, the library every script sources."""
 
+from __future__ import annotations
+
 import os
 from pathlib import Path
 import subprocess
@@ -147,3 +149,51 @@ def test_killed_lock_owner_does_not_block_the_next_run(tmp_path: Path) -> None:
     result = _bash(tmp_path, "track_run setup --exclusive; echo recovered")
     assert result.returncode == 0, result.stderr
     assert "recovered" in result.stdout
+
+
+@pytest.mark.unit
+@pytest.mark.skipif(not Path("/usr/bin/perl").exists(), reason="system Perl lock fallback")
+def test_system_perl_lock_needs_no_python_and_recovers_dead_owner(tmp_path: Path) -> None:
+    """Fresh Mac setup can lock before Python exists and recover after its owner is killed."""
+    commands = tmp_path / "bin"
+    commands.mkdir()
+    for name in ("perl", "mkdir", "rm", "cat", "sleep"):
+        (commands / name).symlink_to(
+            Path("/usr/bin") / name if (Path("/usr/bin") / name).exists() else Path("/bin") / name
+        )
+    env = {**os.environ, "PATH": str(commands), "HOME": str(tmp_path)}
+    command = f'source "{LIBRARY}"; track_run setup --exclusive; echo acquired; read -r -t 30 unused'
+    with subprocess.Popen(
+        ["/bin/bash", "-c", command],
+        cwd=tmp_path,
+        env=env,
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    ) as owner:
+        assert owner.stdout is not None
+        assert owner.stdout.readline().strip() == "acquired"
+        (tmp_path / ".local/setup.status").unlink()  # Exercise the actual lock, not the running-state shortcut.
+        second = subprocess.run(
+            ["/bin/bash", "-c", f'source "{LIBRARY}"; track_run setup --exclusive'],
+            cwd=tmp_path,
+            env=env,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert second.returncode != 0
+        owner.kill()
+        owner.wait(timeout=10)
+    result = subprocess.run(
+        ["/bin/bash", "-c", f'source "{LIBRARY}"; track_run setup --exclusive; echo recovered'],
+        cwd=tmp_path,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    assert "recovered" in result.stdout
+    assert not (tmp_path / ".local/setup.pid").exists()

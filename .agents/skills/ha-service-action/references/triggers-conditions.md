@@ -33,10 +33,10 @@ conditions:
 
 ## Trigger
 
-**Version gate:** the runner-based example below describes a newer Trigger API. Home Assistant 2026.8.0
-uses `Trigger.async_attach_action` and `TriggerAction`; it does not provide `TriggerActionRunner` or
-`async_attach_runner`. Keep 2026.8-compatible implementations on that installed API rather than copying the
-newer reference example or raising the minimum version as incidental cleanup.
+**Baseline: Home Assistant 2026.8.0.** Implement the abstract `async_attach_runner` method with
+`TriggerActionRunner`. The base class's `async_attach_action` calls this implementation; it is not its replacement.
+This dispatcher example selects devices through `options.device_id` and rejects a nonempty `target`, so it never
+accepts a target that its listener ignores. A target-aware trigger must resolve and apply that target itself.
 
 ```python
 import voluptuous as vol
@@ -55,7 +55,7 @@ from homeassistant.helpers.typing import ConfigType
 
 _SCHEMA = vol.Schema(
     {
-        vol.Optional(CONF_TARGET): cv.TARGET_FIELDS,
+        vol.Optional(CONF_TARGET): vol.All(cv.TARGET_FIELDS, vol.Length(max=0)),
         vol.Required(CONF_OPTIONS): {
             vol.Required(ATTR_DEVICE_ID): vol.All(cv.ensure_list, [cv.string]),
         },
@@ -68,7 +68,7 @@ class {ClassPrefix}FaultReportedTrigger(Trigger):
 
     @classmethod
     async def async_validate_config(cls, hass: HomeAssistant, config: ConfigType) -> ConfigType:
-        """Validate the options and target of the trigger."""
+        """Validate device options and reject a nonempty target."""
         return _SCHEMA(config)
 
     def __init__(self, hass: HomeAssistant, config: TriggerConfig) -> None:

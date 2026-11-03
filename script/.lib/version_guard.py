@@ -9,6 +9,8 @@ Prints a Markdown report of what it restored.
 Invoked by script/template-sync-guard; not intended to be run directly.
 """
 
+from __future__ import annotations
+
 from dataclasses import dataclass
 import json
 from pathlib import Path
@@ -213,10 +215,8 @@ def guard(base: str, *, fix: bool) -> list[Restore]:
                 for location in locations:
                     current_pins = [item for item in occurrences if item[3] == location]
                     old_pins = [item for item in old_occurrences if item[3] == renamed.get(location, location)]
-                    if reader.workflow and location[1] is None and old_pins and len(current_pins) != len(old_pins):
-                        raise ValueError(
-                            f"{path}: ambiguous repeated {key} pins; give workflow steps stable ids or names"
-                        )
+                    if old_pins and len(current_pins) != len(old_pins):
+                        raise ValueError(f"{path}: ambiguous repeated {key} pins; review these pins manually")
                     for (version, span, _, _), (old_version, _, old_value, _) in zip(
                         current_pins, old_pins, strict=False
                     ):

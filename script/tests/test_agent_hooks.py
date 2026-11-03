@@ -1,5 +1,7 @@
 """Regression tests for synchronized agent lifecycle hooks."""
 
+from __future__ import annotations
+
 import json
 from pathlib import Path
 import subprocess
@@ -304,3 +306,43 @@ def test_git_resolves_the_effective_custom_hooks_path(repository: Path, absolute
         ["git", "config", "core.hooksPath", str(directory) if absolute else "custom-hooks"], cwd=repository, check=True
     )
     assert _explain("git push", repository) == "ALLOW"
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("body", ["cd ../checked", "(cd ../checked)", "true; cd ../checked"])
+def test_subshell_cwd_does_not_escape_its_scope(tmp_path: Path, body: str) -> None:
+    """A successful cd inside parentheses must not lend its hook to the following push."""
+    caller, checked = tmp_path / "caller", tmp_path / "checked"
+    _initialize_repository(caller, hook_installed=False)
+    _initialize_repository(checked)
+    assert _explain(f"({body}); git push", caller).startswith("BLOCK git's pre-push hook is not installed")
+    assert _explain("(cd ../caller); git push", checked) == "ALLOW"
+    assert _explain("(cd ../caller; git push)", checked).startswith("BLOCK git's pre-push hook is not installed")
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "command",
+    [
+        "GIT_DIR=../other/.git git push",
+        "env GIT_DIR=../other/.git git push",
+        "env GIT_WORK_TREE=../other git push",
+        "env GIT_COMMON_DIR=../other/.git bash -c 'git push'",
+        "git --git-dir=../other/.git push",
+        "git --git-dir ../other/.git push",
+        "git --work-tree=../other push",
+        "GIT_DIR=../other/.git; git push",
+        "export GIT_DIR=../other/.git; git push",
+        "env GIT_CONFIG_GLOBAL=../other/config git push",
+    ],
+)
+def test_repository_overrides_cannot_borrow_the_callers_hook(repository: Path, command: str) -> None:
+    """Unresolved repository/configuration overrides must not validate the caller instead."""
+    assert _explain(command, repository).startswith("BLOCK repository overrides cannot be validated")
+
+
+@pytest.mark.unit
+def test_repository_override_is_local_to_its_subshell(repository: Path) -> None:
+    """A subshell assignment does not affect a subsequent push in the parent shell."""
+    assert _explain("(export GIT_DIR=/unused); git push", repository) == "ALLOW"
+    assert _explain("git --git-dir=/unused status", repository) == "ALLOW"

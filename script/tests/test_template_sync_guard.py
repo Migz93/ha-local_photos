@@ -1,5 +1,7 @@
 """Tests for script/template-sync-guard, which keeps newer versions a template sync would lower."""
 
+from __future__ import annotations
+
 from pathlib import Path
 import subprocess
 import sys
@@ -245,7 +247,7 @@ def test_ambiguous_renamed_steps_require_review_without_partial_edits(synced: Pa
     path = ".github/workflows/ambiguous.yml"
     before = f"jobs:\n  build:\n    steps:\n      - name: Original\n        uses: actions/checkout@{SHA_NEW} # v7.0.0\n"
     _write(synced, {path: before})
-    subprocess.run(["git", "add", "."], cwd=synced, check=True)
+    subprocess.run(["git", "add", path], cwd=synced, check=True)
     subprocess.run(
         ["git", "-c", "commit.gpgsign=false", "commit", "--quiet", "-m", "test: original"], cwd=synced, check=True
     )
@@ -259,3 +261,25 @@ def test_ambiguous_renamed_steps_require_review_without_partial_edits(synced: Pa
     assert "ambiguous renamed" in result.stderr
     assert _read(synced, path) == after
     assert _read(synced, "package.json") == SYNCED["package.json"]
+
+    assert _read(synced, ".devcontainer/devcontainer.json") == SYNCED[".devcontainer/devcontainer.json"]
+
+
+@pytest.mark.unit
+def test_removed_duplicate_package_pin_requires_manual_review(synced: Path) -> None:
+    """An override must not inherit a removed devDependency's pin, or trigger partial writes."""
+    before = '{"devDependencies":{"prettier":"3.9.0"},"overrides":{"prettier":"3.8.9"}}\n'
+    _write(synced, {"package.json": before})
+    subprocess.run(["git", "add", "package.json"], cwd=synced, check=True)
+    subprocess.run(
+        ["git", "-c", "commit.gpgsign=false", "commit", "--quiet", "-m", "test: duplicate pin"],
+        cwd=synced,
+        check=True,
+    )
+    after = '{"overrides":{"prettier":"3.8.0"}}\n'
+    _write(synced, {"package.json": after})
+    result = _guard(synced)
+    assert result.returncode == 2
+    assert "ambiguous repeated prettier" in result.stderr
+    assert _read(synced, "package.json") == after
+    assert _read(synced, ".devcontainer/devcontainer.json") == SYNCED[".devcontainer/devcontainer.json"]
