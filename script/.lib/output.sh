@@ -191,20 +191,37 @@ run_state() {
 # Record this script's run in .local/<name>.status and .local/<name>.pid, and its outcome when it exits. With
 # --exclusive, a second run while one is alive stops instead of competing for the same environment.
 track_run() {
-    local name=$1 mode=${2:-} lock waited=0
+    local name=$1 mode=${2:-}
     mkdir -p .local
-    lock=".local/$name.lock"
     if [[ $mode == "--exclusive" && "$(run_state "$name")" == "running" ]]; then
         die "script/setup/$name is already running; wait for it to finish"
     fi
-    while ! mkdir "$lock" 2>/dev/null; do
-        if [[ $mode != "--wait" || $waited -ge 900 ]]; then
-            die "script/setup/$name is already running or its lock needs inspection: $lock"
+    # Kernel locks are released when the owner exits, including SIGKILL. Never unlink this inode:
+    # a waiting process may already have it open. FD 9 keeps the lock alive in this shell.
+    exec 9>".local/$name.flock"
+    if command -v flock >/dev/null 2>&1; then
+        if [[ $mode == "--wait" ]]; then
+            flock --exclusive --timeout 900 9 || die "Timed out waiting for script/setup/$name"
+        else
+            flock --exclusive --nonblock 9 || die "script/setup/$name is already running"
         fi
-        sleep 1
-        waited=$((waited + 1))
-    done
-    echo "$$" >"$lock/pid"
+    else
+        # macOS has no flock command; Python's stdlib exposes the same kernel lock.
+        python3 - "$mode" <<'LOCK_RUN' || die "script/setup/$name is already running or its lock could not be acquired"
+import fcntl
+import sys
+import time
+deadline = time.monotonic() + (900 if sys.argv[1] == "--wait" else 0)
+while True:
+    try:
+        fcntl.flock(9, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        break
+    except BlockingIOError:
+        if time.monotonic() >= deadline:
+            sys.exit(1)
+        time.sleep(0.1)
+LOCK_RUN
+    fi
     echo "$$" >".local/$name.pid"
     echo "running" >".local/$name.status"
     # shellcheck disable=SC2064 # $name is fixed now, the exit status when the trap runs
@@ -232,8 +249,8 @@ _finish_run() {
     else
         echo "failed" >".local/$1.status"
     fi
-    rm -f ".local/$1.pid" ".local/$1.lock/pid"
-    rmdir ".local/$1.lock" 2>/dev/null || true
+    rm -f ".local/$1.pid"
+    exec 9>&-
 }
 
 # Apply what mise resolves for this checkout: the pinned tools and the venv mise.toml names, in front of PATH. Every

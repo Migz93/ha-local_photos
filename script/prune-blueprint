@@ -61,7 +61,7 @@ if [[ -f $SECTION_FILE ]]; then
     python3 - "$SECTION_FILE" "$SECTION_START" "$SECTION_END" <<'CHECK_SECTION'
 from pathlib import Path
 import sys
-text = Path(sys.argv[1]).read_text()
+text = Path(sys.argv[1]).read_text(encoding="utf-8")
 start, end = sys.argv[2:]
 if text.count(start) != text.count(end) or text.count(start) > 1 or (start in text and text.index(start) > text.index(end)):
     sys.exit("Malformed blueprint-only section; nothing was changed")
@@ -89,11 +89,11 @@ if [[ -f $SECTION_FILE ]] && grep -qF "$SECTION_START" "$SECTION_FILE"; then
 from pathlib import Path
 import sys
 path = Path(sys.argv[1])
-text = path.read_text()
+text = path.read_text(encoding="utf-8")
 start, end = sys.argv[2:]
 begin = text.index(start)
 finish = text.index(end, begin) + len(end)
-path.write_text(text[:begin] + text[finish:].removeprefix("\n"))
+path.write_text(text[:begin] + text[finish:].removeprefix("\n"), encoding="utf-8")
 REMOVE_SECTION
         log_success "Removed blueprint-only sections from $SECTION_FILE"
     else

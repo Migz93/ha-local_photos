@@ -183,6 +183,7 @@ def guard(base: str, *, fix: bool) -> list[Restore]:
     config = json.loads(RENOVATE_CONFIG.read_text(encoding="utf-8")) if RENOVATE_CONFIG.is_file() else {}
     all_readers = readers(config)
     restores = []
+    pending: list[tuple[Path, str]] = []
     for path in tracked_files():
         applicable = [reader for reader in all_readers if any(file.search(path) for file in reader.files)]
         if not applicable or not Path(path).is_file():
@@ -197,9 +198,21 @@ def guard(base: str, *, fix: bool) -> list[Restore]:
             for key, occurrences in pins(text, reader).items():
                 old_occurrences = kept.get(key, [])
                 locations = {item[3] for item in occurrences}
+                previous_locations = {item[3] for item in old_occurrences}
+                renamed: dict[tuple[str, str | None], tuple[str, str | None]] = {}
+                if reader.workflow:
+                    for job in {location[0] for location in locations | previous_locations}:
+                        added = [
+                            item for item in occurrences if item[3][0] == job and item[3] not in previous_locations
+                        ]
+                        removed = [item for item in old_occurrences if item[3][0] == job and item[3] not in locations]
+                        if added and removed:
+                            if len(added) != 1 or len(removed) != 1:
+                                raise ValueError(f"{path}: ambiguous renamed {key} steps; review these pins manually")
+                            renamed[added[0][3]] = removed[0][3]
                 for location in locations:
                     current_pins = [item for item in occurrences if item[3] == location]
-                    old_pins = [item for item in old_occurrences if item[3] == location]
+                    old_pins = [item for item in old_occurrences if item[3] == renamed.get(location, location)]
                     if reader.workflow and location[1] is None and old_pins and len(current_pins) != len(old_pins):
                         raise ValueError(
                             f"{path}: ambiguous repeated {key} pins; give workflow steps stable ids or names"
@@ -213,7 +226,9 @@ def guard(base: str, *, fix: bool) -> list[Restore]:
         if fix and replacements:
             for (start, end), value in sorted(replacements, reverse=True):
                 text = text[:start] + value + text[end:]
-            Path(path).write_text(text, encoding="utf-8")
+            pending.append((Path(path), text))
+    for target, content in pending:
+        target.write_text(content, encoding="utf-8")
     return list(dict.fromkeys(restores))
 
 

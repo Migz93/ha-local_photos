@@ -9,8 +9,8 @@ reference: <https://contributors.home-assistant.io/core/integrations/triggers-an
 source and one current implementation instead of trusting this page or an older integration:
 
 ```bash
-rg -n "class Trigger\b|def async_attach_runner|def async_validate_config" .venv/lib/python*/site-packages/homeassistant/helpers/trigger/
-rg -n "class Condition\b|def _async_check|def _async_setup|def _async_unload" .venv/lib/python*/site-packages/homeassistant/helpers/condition*
+rg -n "class Trigger\b|def async_attach_runner|def async_validate_config" .venv/lib/python*/site-packages/homeassistant/helpers/trigger.py
+rg -n "class Condition\b|def _async_check|def _async_setup|def _async_unload" .venv/lib/python*/site-packages/homeassistant/helpers/condition.py
 ```
 
 `device_trigger.py`, `device_condition.py` and `device_action.py` are the frozen predecessor — never add them.
@@ -33,10 +33,15 @@ conditions:
 
 ## Trigger
 
+**Version gate:** the runner-based example below describes a newer Trigger API. Home Assistant 2026.8.0
+uses `Trigger.async_attach_action` and `TriggerAction`; it does not provide `TriggerActionRunner` or
+`async_attach_runner`. Keep 2026.8-compatible implementations on that installed API rather than copying the
+newer reference example or raising the minimum version as incidental cleanup.
+
 ```python
 import voluptuous as vol
 
-from homeassistant.const import ATTR_DEVICE_ID, CONF_OPTIONS
+from homeassistant.const import ATTR_DEVICE_ID, CONF_OPTIONS, CONF_TARGET
 from homeassistant.core import CALLBACK_TYPE, HomeAssistant, callback
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
@@ -50,6 +55,7 @@ from homeassistant.helpers.typing import ConfigType
 
 _SCHEMA = vol.Schema(
     {
+        vol.Optional(CONF_TARGET): cv.TARGET_FIELDS,
         vol.Required(CONF_OPTIONS): {
             vol.Required(ATTR_DEVICE_ID): vol.All(cv.ensure_list, [cv.string]),
         },

@@ -117,3 +117,12 @@ def test_malformed_section_changes_nothing(repo: Path, text: str) -> None:
     assert result.returncode != 0
     assert (repo / SECTION_FILE).read_text(encoding="utf-8") == text
     assert all((repo / name).exists() for name in (*PRUNED, *PROJECT_OWNED))
+
+
+@pytest.mark.unit
+def test_pruning_preserves_utf8_outside_the_section(repo: Path) -> None:
+    """Non-ASCII README content must survive a section removal unchanged."""
+    text = "Café\n<!-- blueprint-only:start -->\nremove\n<!-- blueprint-only:end -->\n朝\n"
+    (repo / SECTION_FILE).write_text(text, encoding="utf-8")
+    assert _run(repo, "--apply").returncode == 0
+    assert (repo / SECTION_FILE).read_text(encoding="utf-8") == "Café\n朝\n"

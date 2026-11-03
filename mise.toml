@@ -26,15 +26,29 @@ _.python.venv = { path = ".venv" }
 # What Renovate would raise, without opening a pull request. Renovate's engines name an older Node major than the
 # environment may have, so the task brings its own; mise installs task tools on first use, never with `mise install`.
 [tasks.renovate-dry-run]
-description = "Show what Renovate would raise, without a pull request"
+description = "Preview committed dependency updates in an isolated clone, without a pull request"
 # @yarnpkg/libzip 3.2.2, a Renovate dependency, lost the provenance 3.2.1 had, which mise's npm trust policy refuses.
 tools = { node = "24.22.2", "npm:renovate" = { version = "44.193.1", trust_policy_excludes = ["@yarnpkg/libzip@3.2.2"] } }
 shell = "bash -c"
 run = '''
-token="${RENOVATE_GITHUB_COM_TOKEN:-$(gh auth token 2>/dev/null)}"
+set -euo pipefail
+token="${RENOVATE_GITHUB_COM_TOKEN:-$(gh auth token 2>/dev/null || true)}"
 if [[ -z "$token" ]]; then
   echo "renovate-dry-run: no GitHub token; run gh auth login, or set RENOVATE_GITHUB_COM_TOKEN" >&2
   exit 1
 fi
-LOG_LEVEL=debug RENOVATE_GITHUB_COM_TOKEN="$token" renovate --enabled=true --platform=local --dry-run=lookup
+preview=$(mktemp -d)
+trap 'rm -rf "$preview"' EXIT
+git clone --quiet --no-hardlinks --local "$PWD" "$preview/repository"
+python3 - "$preview/repository/.github/renovate.json" <<'PREVIEW_CONFIG'
+import json
+from pathlib import Path
+import sys
+path = Path(sys.argv[1])
+config = json.loads(path.read_text(encoding="utf-8"))
+config["enabled"] = True
+path.write_text(json.dumps(config), encoding="utf-8")
+PREVIEW_CONFIG
+cd "$preview/repository"
+LOG_LEVEL=debug RENOVATE_GITHUB_COM_TOKEN="$token" renovate --platform=local --dry-run=lookup
 '''

@@ -157,32 +157,58 @@ WRAPPER_VALUES = {
 }
 
 
-def first_executable(words):
-    """Find the executable through shell prefixes and supported option-taking wrappers."""
+class InspectionError(ValueError):
+    """A shell form that cannot be inspected reliably without executing it."""
+
+
+def first_executable(words, cwd):
+    """Find a wrapped executable and its working directory without running shell text."""
     index = 0
+    directory = cwd
+    prefix_values = {"command": set(), "time": {"-o", "--output", "-f", "--format"}, "exec": {"-a"}}
     while index < len(words):
         word = words[index]
         executable = os.path.basename(word)
-        if ASSIGNMENT.fullmatch(word) or word in COMMAND_PREFIXES:
+        if ASSIGNMENT.fullmatch(word):
             index += 1
             continue
+        if word in COMMAND_PREFIXES or executable in prefix_values:
+            index += 1
+            while executable in prefix_values and index < len(words) and words[index].startswith("-"):
+                option = words[index]
+                index += 2 if option in prefix_values[executable] else 1
+                if option == "--":
+                    break
+            continue
         if executable not in WRAPPER_VALUES:
-            return index
+            return index, directory
         index += 1
         while index < len(words):
             option = words[index]
             if option == "--":
                 index += 1
                 break
-            if executable == "env" and ASSIGNMENT.fullmatch(option):
+            if executable == "env" and (option.startswith("-S") or option.startswith("--split-string")):
+                raise InspectionError("env split strings cannot be inspected safely; use the direct command")
+            if executable == "env" and (option in {"-C", "--chdir"} or option.startswith(("-C", "--chdir="))):
+                if option in {"-C", "--chdir"}:
+                    if index + 1 >= len(words):
+                        raise InspectionError("env directory option has no value")
+                    target = words[index + 1]
+                    index += 2
+                else:
+                    target = option[2:] if option.startswith("-C") else option.partition("=")[2]
+                    index += 1
+                directory = os.path.join(directory, os.path.expandvars(os.path.expanduser(target)))
+            elif executable == "env" and ASSIGNMENT.fullmatch(option):
                 index += 1
             elif option.startswith("-"):
                 index += 2 if option in WRAPPER_VALUES[executable] else 1
             else:
                 break
         if executable == "timeout" and index < len(words):
-            index += 1  # duration precedes the command
-    return index
+            index += 1
+    return index, directory
 
 
 GIT_OPTIONS_WITH_VALUES = {"-C", "-c", "--config-env", "--exec-path", "--git-dir", "--namespace", "--work-tree"}
@@ -286,7 +312,7 @@ def inspect(command, cwd, depth=0):
                 return result
             pushes += result.get("directories", [])
         nested = []
-        index = first_executable(words)
+        index, effective_cwd = first_executable(words, chain_dir or cwd)
         if index >= len(words):
             continue
         executable = os.path.basename(words[index])
@@ -305,14 +331,14 @@ def inspect(command, cwd, depth=0):
         elif executable == "eval":
             nested.append(" ".join(words[index + 1 :]))
         elif executable == "git":
-            result = inspect_git(words, index, chain_dir or cwd)
+            result = inspect_git(words, index, effective_cwd)
             if result and result["status"] == "block":
                 return result
             if result:
                 pushes.append(result["directory"])
 
         for inner in nested:
-            result = inspect_nested(inner, chain_dir or cwd, depth, "command")
+            result = inspect_nested(inner, effective_cwd, depth, "command")
             if result["status"] == "block":
                 return result
             pushes += result.get("directories", [])
@@ -324,6 +350,14 @@ def installs_pre_push(text):
     match = HOOK_TYPES.search(text)
     value = "\n".join(line.split("#", 1)[0] for line in match.group(1).splitlines()) if match else ""
     return "pre-push" in re.findall(r"[A-Za-z][A-Za-z0-9-]*", value)
+
+
+NATIVE_PUSH_HOOK = '''#!/bin/bash
+# blueprint-native-push-gate: inspect all refs before script/push-gate
+set -euo pipefail
+root="$(git rev-parse --show-toplevel)"
+exec "$root/script/pre-push" "$@"
+'''
 
 
 def missing_hook(directory):
@@ -345,8 +379,11 @@ def missing_hook(directory):
     installed = root / hook.stdout.strip()
     if not installed.is_file() or not os.access(installed, os.X_OK):
         return "git's pre-push hook is not installed; run prek install (script/setup/bootstrap does it)"
-    if "script/pre-push" not in installed.read_text(encoding="utf-8"):
+    if installed.read_text(encoding="utf-8") != NATIVE_PUSH_HOOK:
         return "git's pre-push hook does not install the native gate; run script/setup/bootstrap"
+    for script in ("script/pre-push", "script/push-gate"):
+        if not (root / script).is_file() or not os.access(root / script, os.X_OK):
+            return "the native push gate is incomplete; run script/setup/bootstrap"
     return None
 
 
@@ -373,6 +410,8 @@ try:
     reason = decide(json.loads(os.environ["HOOK_PAYLOAD"]))
 except (KeyError, json.JSONDecodeError):
     reason = "the hook payload is not valid JSON"
+except InspectionError as err:
+    reason = str(err)
 except Exception as err:  # fail closed when inspection itself fails
     reason = f"cannot inspect the command safely ({type(err).__name__})"
 

@@ -151,7 +151,8 @@ Where a value lives is decided once and changing it later requires a migration.
 
 - Keep credentials in `entry.data` only — never in `entry.options`, never in the entry title.
 - Reuse `CONF_*` names from `homeassistant.const` where one exists; otherwise define them in `const.py`.
-- Give every schema field a `selector.*` and a default. A bare `vol.Coerce(int)` renders as an untyped box and is
+- Give every user-facing schema field a `selector.*`. Set a default only when a valid product default exists;
+  credentials, hosts, and account identifiers must not receive invented defaults. A bare `vol.Coerce(int)` renders as an untyped box and is
   a review blocker.
 - Give every field both a `data` and a `data_description` translation key.
 - Pre-fill with `self.add_suggested_values_to_schema(schema, entry.data)` on reconfigure and options.

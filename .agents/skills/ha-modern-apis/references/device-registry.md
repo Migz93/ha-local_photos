@@ -27,19 +27,19 @@ These rules hold in migrations, repairs, diagnostics, registry listeners **and t
 
 ## Looking a device up
 
-| You need                                                 | Call                                                                                                                                        |
-| -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| The device of the entity you are in                      | `self.device_entry`                                                                                                                         |
-| A device by identifier                                   | `device_registry.async_get_device_by_identifier((DOMAIN, serial), entry.entry_id)`                                                          |
-| A device by connection                                   | `device_registry.async_get_device_by_connection((dr.CONNECTION_NETWORK_MAC, mac), entry.entry_id)`                                          |
-| Only the device **id**, to pass as `via_device_id`       | `dr.async_get_device_id_by_identifier(hass, (DOMAIN, hub_id), config_entry_id=entry.entry_id)` — raises `ValueError` when it does not exist |
-| A device from a `device_id` in an action, with its entry | `dr.async_get_device_and_config_entry_for_domain(hass, device_id, domain=DOMAIN)` — `(None, None)` unknown, `(device, None)` not ours       |
-| All devices of the entry                                 | `dr.async_entries_for_config_entry(device_registry, entry.entry_id)`                                                                        |
-| A child device / all children of a device                | `async_get_child_device_by_identifier(identifier, entry.entry_id)` / `dr.async_entries_for_parent_device(device_registry, parent_id)`       |
-| Every device with an identifier, across entries          | `device_registry.async_get_devices(identifiers=…)` — rarely right in an integration                                                         |
+| You need                                                 | Call                                                                                                                                                                      |
+| -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| The device of the entity you are in                      | `self.device_entry`                                                                                                                                                       |
+| A device by identifier                                   | `device_registry.async_get_device_by_identifier((DOMAIN, serial), entry.entry_id)`                                                                                        |
+| A device by connection                                   | `device_registry.async_get_device_by_connection((dr.CONNECTION_NETWORK_MAC, mac), entry.entry_id)`                                                                        |
+| Only the device **id**, to pass as `via_device_id`       | `dr.async_get_device_id_by_identifier(hass, (DOMAIN, hub_id), config_entry_id=entry.entry_id)` — raises `ValueError` when it does not exist                               |
+| A device from a `device_id` in an action, with its entry | `device_registry.async_get(device_id)`; reject `None`, then validate `device.config_entry_id` with `service.async_get_config_entry(hass, DOMAIN, device.config_entry_id)` |
+| All devices of the entry                                 | `dr.async_entries_for_config_entry(device_registry, entry.entry_id)`                                                                                                      |
+| Every device with an identifier, across entries          | `device_registry.async_get_devices(identifiers=…)` — rarely right in an integration                                                                                       |
 
-`device_registry.async_get(device_id)` returns main **and** child devices, and by default also a read-only stand-in for
-the id of a pre-2026.8 composite device; `include_child_devices=False` / `include_composite_devices=False` narrow it.
+On 2026.8.0, `device_registry.async_get(device_id)` accepts only the device ID. It can return a read-only
+stand-in for an old composite ID; do not pass `include_child_devices` or `include_composite_devices` flags.
+Child-device lookup methods and these filtering flags describe newer APIs and are not baseline examples.
 
 ## Hub or parts: `via_device_id` versus child devices
 

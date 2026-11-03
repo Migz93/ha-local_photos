@@ -126,3 +126,24 @@ def test_atomic_acquisition_rejects_overlapping_runs(tmp_path: Path) -> None:
         second = _bash(tmp_path, "track_run setup --exclusive")
         assert second.returncode != 0
         first.wait(timeout=10)
+
+
+@pytest.mark.unit
+def test_killed_lock_owner_does_not_block_the_next_run(tmp_path: Path) -> None:
+    """A kernel lock is recoverable after SIGKILL without racing to delete a stale directory."""
+    command = f'source "{LIBRARY}"; track_run setup --exclusive; echo acquired; read -r -t 30 unused'
+    with subprocess.Popen(
+        ["bash", "-c", command],
+        cwd=tmp_path,
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    ) as owner:
+        assert owner.stdout is not None
+        assert owner.stdout.readline().strip() == "acquired"
+        owner.kill()
+        owner.wait(timeout=10)
+    result = _bash(tmp_path, "track_run setup --exclusive; echo recovered")
+    assert result.returncode == 0, result.stderr
+    assert "recovered" in result.stdout

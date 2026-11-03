@@ -220,3 +220,42 @@ def test_spelled_out_prereleases_keep_their_number(synced: Path, old: str, new: 
     _write(synced, {path: f"example=={new}\n"})
     assert _guard(synced).returncode == 0
     assert old in _read(synced, path)
+
+
+@pytest.mark.unit
+def test_renamed_step_keeps_its_higher_action_version(synced: Path) -> None:
+    """A step rename does not remove a dependency from version preservation."""
+    path = ".github/workflows/rename.yml"
+    before = f"jobs:\n  build:\n    steps:\n      - name: Old name\n        uses: actions/checkout@{SHA_NEW} # v7.0.0\n"
+    _write(synced, {path: before})
+    subprocess.run(["git", "add", "."], cwd=synced, check=True)
+    subprocess.run(
+        ["git", "-c", "commit.gpgsign=false", "commit", "--quiet", "-m", "test: old name"], cwd=synced, check=True
+    )
+    _write(synced, {path: before.replace("Old name", "New name").replace(SHA_NEW, SHA_OLD).replace("v7.0.0", "v6.0.0")})
+    result = _guard(synced)
+    assert result.returncode == 0, result.stderr
+    assert "New name" in _read(synced, path)
+    assert "# v7.0.0" in _read(synced, path)
+
+
+@pytest.mark.unit
+def test_ambiguous_renamed_steps_require_review_without_partial_edits(synced: Path) -> None:
+    """Several unmatched uses cannot be paired by guesswork or leave other files partly fixed."""
+    path = ".github/workflows/ambiguous.yml"
+    before = f"jobs:\n  build:\n    steps:\n      - name: Original\n        uses: actions/checkout@{SHA_NEW} # v7.0.0\n"
+    _write(synced, {path: before})
+    subprocess.run(["git", "add", "."], cwd=synced, check=True)
+    subprocess.run(
+        ["git", "-c", "commit.gpgsign=false", "commit", "--quiet", "-m", "test: original"], cwd=synced, check=True
+    )
+    after = (
+        before.replace("Original", "Renamed").replace("v7.0.0", "v6.0.0")
+        + f"      - name: Added\n        uses: actions/checkout@{SHA_OLD} # v5.0.0\n"
+    )
+    _write(synced, {path: after, "package.json": SYNCED["package.json"]})
+    result = _guard(synced)
+    assert result.returncode == 2
+    assert "ambiguous renamed" in result.stderr
+    assert _read(synced, path) == after
+    assert _read(synced, "package.json") == SYNCED["package.json"]
