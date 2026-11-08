@@ -258,7 +258,18 @@ log=$(mktemp)
 trap 'rm -f "$log"' EXIT
 
 echo "Running script/lint-check and script/type-check in $toplevel …" >&2
-if "$toplevel/script/lint-check" >"$log" 2>&1 && "$toplevel/script/type-check" >>"$log" 2>&1; then
+run_project_check() {
+    if [[ -n "${REMOTE_CONTAINERS:-}" || -n "${CODESPACES:-}" || -n "${GITHUB_ACTIONS:-}" ]]; then
+        "$toplevel/script/$1"
+    elif command -v devcontainer >/dev/null 2>&1; then
+        devcontainer exec --workspace-folder "$toplevel" "script/$1"
+    else
+        echo "Start the project's devcontainer and install its host management CLI before pushing." >&2
+        return 1
+    fi
+}
+
+if run_project_check lint-check >"$log" 2>&1 && run_project_check type-check >>"$log" 2>&1; then
     exit 0
 fi
 
