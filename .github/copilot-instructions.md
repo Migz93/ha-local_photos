@@ -171,7 +171,7 @@ script/type-check   # Pyright — no auto-fix ever
 
 **Session management:**
 
-- When task completes and developer moves on: suggest commit with message
+- Close out authorized task work using the review and cleanup flow in `AGENTS.md`
 - Monitor context size — warn if getting large and a new topic starts
 - Offer to create summary for fresh session if context is strained
 - Suggest once, don't nag if declined
@@ -182,6 +182,6 @@ script/type-check   # Pyright — no auto-fix ever
 
 **Commit rules (CRITICAL):**
 
-- **Never commit automatically** — only commit when the developer explicitly requests it
-- A previous commit request is NOT a standing permission; each commit requires a fresh explicit instruction
-- **Never ask about pushing** — the developer always handles `git push` themselves; do not offer or suggest it
+- Follow `AGENTS.md` for authorized task commits, host-side pushes and review gates.
+- Never commit directly to `main`; preserve owner approval for PRs, merges and releases.
+- Keep source edits, project checks and dependency installation inside the disposable devcontainer.
