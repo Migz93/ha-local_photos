@@ -3,7 +3,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 for target in config node_modules; do
-    if ! mountpoint -q "$target"; then
+    if ! mountpoint -q "$target" || [[ "$(stat -f -c %T "$target")" != tmpfs ]]; then
         echo "Expected disposable tmpfs mount at $target; refusing to use host data." >&2
         exit 1
     fi
