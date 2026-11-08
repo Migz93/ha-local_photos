@@ -10,4 +10,10 @@ for target in config node_modules; do
     sudo chown "$(id -u):$(id -g)" "$target"
 done
 # Use tracked defaults only. Changes here are temporary and never replace host config.
-git archive HEAD config | tar -x
+if [[ ! -f config/configuration.yaml ]]; then
+    git archive HEAD config | tar -x
+fi
+# tmpfs also resets on stop. Dev Container clients run postStartCommand on restart.
+if [[ ${1:-} == --restore && ! -x node_modules/.bin/prettier ]]; then
+    npm ci --silent
+fi

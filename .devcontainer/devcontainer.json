@@ -13,7 +13,7 @@
   "workspaceFolder": "/workspaces/local_photos",
   "onCreateCommand": "bash .devcontainer/prepare-disposable.sh && bash .devcontainer/on-create.sh",
   "updateContentCommand": "bash .devcontainer/update-content.sh",
-  "postStartCommand": "bash .devcontainer/post-start.sh",
+  "postStartCommand": "bash .devcontainer/prepare-disposable.sh --restore && bash .devcontainer/post-start.sh",
   "postCreateCommand": "bash .devcontainer/post-create.sh",
   "postAttachCommand": "bash .devcontainer/post-attach.sh",
   "containerEnv": {
