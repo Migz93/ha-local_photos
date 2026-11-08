@@ -132,7 +132,7 @@ The devcontainer has no persistent home, Python environment, cache or AI-auth
 mounts. Python dependencies and caches live in the removable container layer.
 Node dependencies and Home Assistant runtime config use tmpfs mounts; they reset on both stop and removal. Creation and restart seed committed
 `config/` defaults when missing, and the post-start hook reinstalls Node tools
-when absent. Always start through the host launcher or a Dev Container client
+when absent. It also restores HACS when enabled by the project setup. Always start through the host launcher or a Dev Container client
 so lifecycle hooks run; a raw Docker start alone does not run them. Saved host `config/` state remains hidden and untouched.
 Do not copy credentials or real integration state into disposable checks.
 Runtime config edits are temporary; change tracked defaults from the host only

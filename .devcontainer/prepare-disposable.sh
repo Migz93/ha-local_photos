@@ -14,6 +14,11 @@ if [[ ! -f config/configuration.yaml ]]; then
     git archive HEAD config | tar -x
 fi
 # tmpfs also resets on stop. Dev Container clients run postStartCommand on restart.
-if [[ ${1:-} == --restore && ! -x node_modules/.bin/prettier ]]; then
-    npm ci --silent
+if [[ ${1:-} == --restore ]]; then
+    if [[ ! -x node_modules/.bin/prettier ]]; then
+        npm ci --silent
+    fi
+    if [[ ! -d config/custom_components/hacs ]]; then
+        script/setup/install-hacs
+    fi
 fi
