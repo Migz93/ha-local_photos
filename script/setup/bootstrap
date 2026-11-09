@@ -52,12 +52,11 @@ if [[ ${APT_UPDATE:-"0"} == "1" ]]; then
     sudo -n env DEBIAN_FRONTEND=noninteractive apt-get upgrade -y
 fi
 
-"$SCRIPT_DIR/toolchain"
-use_mise_env
-
-UV_HINT="mise (https://mise.jdx.dev/getting-started.html), then script/setup/toolchain — or uv itself"
 log_header "Checking for uv"
-require_command uv "$UV_HINT"
+if ! command -v uv >/dev/null 2>&1; then
+    log_info "UV not found, installing..."
+    pipx install uv
+fi
 
 log_header "Checking for Python virtual environment"
 
@@ -202,7 +201,10 @@ if [[ -f "$HA_VERSION_MARKER" ]]; then
         # which cannot be removed itself — only its contents can be deleted.
         find "$VENV_PATH" -mindepth 1 -delete
         hash -r
-        require_command uv "$UV_HINT"
+        if ! command -v uv >/dev/null 2>&1; then
+            pipx install uv
+            hash -r
+        fi
         uv venv "$VENV_PATH"
         # shellcheck source=/dev/null
         source "$VENV_PATH/bin/activate"

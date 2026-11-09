@@ -70,14 +70,12 @@ script/hassfest          # official HA validation (first run downloads ~27 MB)
 script/test              # integration tests plus synchronized tooling tests
 script/skills-check      # validate .agents/skills/ and agent protected paths (also part of lint / lint-check)
 script/architecture-check # conservative architecture guardrails (also part of lint / lint-check) — see below
-script/push-gate         # git's pre-push hook: clean HEAD only, then lint-check + type-check in parallel
 script/version           # read the canonical version from manifest.json
 script/ha-version-sync   # align the pinned Home Assistant version across config files, and mise's Python with it
-script/setup/toolchain   # install the tools mise.toml pins (--install-mise: mise itself too) — run by bootstrap
+script/setup/toolchain   # install the tools mise.toml pins (--install-mise: mise itself too) — optional; not run by bootstrap
 script/setup/github      # apply the GitHub settings and .github/rulesets/ (--dry-run first) — see REPOSITORY_SETUP.md
 script/secret-scan       # betterleaks over --staged changes (the commit hook), a --range, or --all of the history
 script/clean             # remove caches, logs, build artifacts
-script/prune-blueprint   # list (--apply: remove) blueprint-only leftovers; ignore them and project-owned paths in .templatesyncignore
 script/help              # list every script with its description
 ```
 
@@ -141,8 +139,8 @@ Assistant design constraint, not a repository quirk.
    same imports.
 3. `script/setup/bootstrap` (or a container rebuild) to install it.
 
-Pin versions in both, and keep them identical. Renovate raises the two files in one pull request; Dependabot skips
-`requirements.txt` on purpose, because it cannot see `manifest.json` and would split the pair.
+Pin versions in both, and keep them identical. Dependabot continues checking `requirements.txt`; verify the
+matching manifest pin when reviewing an update. Renovate can coordinate both files if the owner opts in.
 
 | File                     | Template sync  | Contents                                         |
 | ------------------------ | -------------- | ------------------------------------------------ |
@@ -169,35 +167,22 @@ and report what you could not verify rather than assuming it:
 
 ## Command-line tools and dependency updates
 
-`mise.toml` pins the tools the scripts run — Python, `uv`, the shell linters, `jq`, `yq`, `rg`, `fd`, `gron` — for
-every environment, and names the Home Assistant venv (`.venv`), so `mise env` — which every script and agent shell
-applies — puts that venv ahead of mise's own Python. A new tool goes there with an exact version, never `latest` and never into the dev container's apt
-list, which no cloud session or CI job sees. In an integration made from the blueprint, its own tools go into
-`.config/mise/conf.d/project.toml` instead: template sync overwrites `mise.toml` and never touches that file, and mise
-loads it everywhere `mise.toml` is loaded. A tool in both keeps the blueprint's version. A terminal tool only a person in the dev container uses goes into
-`mise.devcontainer.toml` instead, which mise loads there through `MISE_ENV=devcontainer`. apt keeps the system
-libraries Home Assistant's wheels build against and the few tools mise has no prebuilt binary for. Python follows Home Assistant: `script/ha-version-sync` fails when the
-pin no longer satisfies Home Assistant's `requires-python`. Node is not pinned there; every environment brings one.
+The development container keeps its image-provided Python and command-line tools. Run project setup and checks
+inside that container, as described in `AGENTS.md`; setup does not install mise or tools on the host.
 
-Two bots share the updates without overlapping — a dependency raised by both would arrive twice:
+`mise.toml` provides the upstream tool pins used by CI. `script/setup/toolchain` is an optional, explicit way to
+install those pins inside a development environment. Project additions belong in `.config/mise/conf.d/project.toml`,
+which template sync leaves alone. Personal mise overrides belong in the ignored `mise.local.toml`.
+`script/ha-version-sync` checks the Python pin against the supported Home Assistant release.
 
-| What                                                                | Raised by                             | Pull request                                                                          |
-| ------------------------------------------------------------------- | ------------------------------------- | ------------------------------------------------------------------------------------- |
-| GitHub Actions, npm, dev container features, `requirements_dev.txt` | Dependabot (`.github/dependabot.yml`) | weekly, minor/patch grouped per ecosystem                                             |
-| `mise.toml`, the mise version in workflows and the dev container    | Renovate (`.github/renovate.json`)    | weekly, one `tooling` group                                                           |
-| `manifest.json` + `requirements.txt`                                | Renovate                              | one per package, a major waits for approval; `fix(deps)` only for a security advisory |
-| `pytest-homeassistant-custom-component`                             | Renovate                              | its own; a new release train fails `script/ha-version-sync` until `hacs.json` follows |
+Dependabot retains the repository's existing coverage, including `requirements.txt` and GitHub Actions. When a
+runtime package changes, review and update the matching `manifest.json` pin as well. Keep the Home Assistant test
+dependency on the release train declared in `hacs.json`; a new train is a separate compatibility decision.
 
-Renovate needs its GitHub App installed on the repository and does nothing without it: no error, no pull request.
-Dependabot has no mise ecosystem, so without the App the tool pins and the runtime requirements only move by hand;
-`toolchain-update-check.yml` then keeps one issue open listing the outdated pins, and stays quiet while Renovate is
-active.
-`mise run renovate-dry-run` shows what Renovate would raise, without opening anything. The developer-facing version of
-this section is `docs/development/DEPENDENCY_UPDATES.md`.
-
-To drop Dependabot and let Renovate raise everything, delete `.github/dependabot.yml` and the first two package rules
-in `.github/renovate.json`; the grouping and the release-age settings for those ecosystems are already there. Keep
-Dependabot alerts on in the repository settings either way — Renovate reads them for its security pull requests.
+`.github/renovate.json` is optional configuration. It needs the Renovate GitHub App and an owner decision to adopt it.
+Before enabling it, coordinate its coverage with Dependabot to avoid duplicate updates. Scanner updates retain
+manual merge approval. `mise run renovate-dry-run` can show proposed updates without opening pull requests.
+The optional `toolchain-update-check.yml` workflow reports outdated pins when Renovate is inactive.
 
 ## Extending the scripts with hooks
 

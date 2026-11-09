@@ -34,17 +34,6 @@ install_agent_config() {
     fi
 }
 
-link_into_volume() {
-    local target=$1 link=$2
-    mkdir -p "$target"
-    if [[ -e "$link" || -L "$link" ]]; then
-        print_info "${link} already exists; leaving it untouched."
-    else
-        mkdir -p "$(dirname "$link")"
-        ln -s "$target" "$link"
-    fi
-}
-
 # Load DevContainer environment overrides (.env → .env.local, later wins).
 # Makes HA_VERSION and other vars available in this script and user hooks.
 # shellcheck source=.devcontainer/_load_env.sh
@@ -82,11 +71,6 @@ install_agent_config "Claude Code managed settings" claude-code/managed-settings
     /etc/claude-code/managed-settings.json
 install_agent_config "Codex system defaults" codex/config.toml /etc/codex/config.toml
 install_agent_config "OpenCode managed settings" opencode/opencode.json /etc/opencode/opencode.json
-
-# OpenCode reads ~/.config/opencode and ~/.local/share/opencode, so its volume is linked there.
-print_info "Setting up symlinks for OpenCode config and data..."
-link_into_volume /home/vscode/.opencode/config /home/vscode/.config/opencode
-link_into_volume /home/vscode/.opencode/data /home/vscode/.local/share/opencode
 
 # Bootstrap Copilot CLI wrapper/defaults from the repository when present.
 # GitHub CLI (and its Copilot CLI command) is provided by devcontainer features;
