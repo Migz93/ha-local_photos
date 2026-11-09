@@ -48,8 +48,14 @@ covers the `services.yaml` half of the change too.
 
 ## Service Schema
 
-Use `probatio` with `homeassistant.helpers.config_validation` for parameter validation. Home Assistant validates with
-`probatio`, and service registration is typed against `probatio.Schema` — a `voluptuous` schema fails type checking.
+**Supported baseline:** This project supports Home Assistant 2026.8 and keeps `import voluptuous as vol` for schemas.
+Examples using `probatio` require Home Assistant 2026.9+; do not copy those imports or newer validators into code
+that must support 2026.8. Keep the existing `vol` schemas and validators until a minimum-version increase is approved.
+Do not add `probatio` as an integration requirement to work around the baseline.
+
+On Home Assistant 2026.9+, use `probatio` with `homeassistant.helpers.config_validation` for parameter validation;
+service registration there is typed against `probatio.Schema`. The examples below target that newer baseline.
+For this project's current 2026.8 support, retain the existing `vol` schemas and compatible validators.
 
 ```python
 import probatio

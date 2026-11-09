@@ -1,5 +1,10 @@
 # Triggers and conditions
 
+**Supported baseline:** This project supports Home Assistant 2026.8 and keeps `import voluptuous as vol` for schemas.
+Examples using `probatio` require Home Assistant 2026.9+; do not copy those imports or newer validators into code
+that must support 2026.8. Keep the existing `vol` schemas and validators until a minimum-version increase is approved.
+Do not add `probatio` as an integration requirement to work around the baseline.
+
 How an integration offers its own automation triggers ("Device reported a fault") and conditions ("Device is
 charging"): a `trigger.py` / `condition.py` platform, described in `triggers.yaml` / `conditions.yaml`. Upstream
 reference: <https://contributors.home-assistant.io/core/integrations/triggers-and-conditions/>.

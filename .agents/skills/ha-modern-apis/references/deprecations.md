@@ -22,12 +22,16 @@ ones: [`ha-testing`](../../ha-testing/SKILL.md#two-settings-that-surprise-people
 
 ## Schema validation — `voluptuous` replaced by `probatio`
 
-The core validates with `probatio`, a drop-in replacement with the same API
-(`Schema`, `Required`, `Optional`, `All`, `Coerce`, `Range`, …). `async_show_form`, `add_suggested_values_to_schema`
-and service registration are typed against `probatio.Schema`, so a `voluptuous` schema fails type checking.
-This blueprint writes `import probatio` and `probatio.Schema(...)`; `probatio` ships with Home Assistant and needs no
-`manifest.json` requirement. An existing `import voluptuous as vol` still works at runtime, because Home Assistant aliases
-the name to `probatio`, and only the type checker complains.
+**Supported baseline:** This project supports Home Assistant 2026.8 and keeps `import voluptuous as vol` for schemas.
+Examples using `probatio` require Home Assistant 2026.9+; do not copy those imports or newer validators into code
+that must support 2026.8. Keep the existing `vol` schemas and validators until a minimum-version increase is approved.
+Do not add `probatio` as an integration requirement to work around the baseline.
+
+Since Home Assistant 2026.9, Core validates with `probatio`, a replacement with the shared schema API
+(`Schema`, `Required`, `Optional`, `All`, `Coerce`, `Range`, …). On that newer baseline, `async_show_form`,
+`add_suggested_values_to_schema` and service registration are typed against `probatio.Schema`; the old import can
+fail type checking. `probatio` ships with those newer Core versions and needs no `manifest.json` requirement.
+This does not apply to the supported 2026.8 baseline: keep its existing `import voluptuous as vol`.
 
 ## Imports that moved
 
