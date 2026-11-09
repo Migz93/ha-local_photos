@@ -24,8 +24,10 @@ pyproject.toml
 
 # ── Runtime dependencies ──────────────────────────────────────
 # requirements.txt lists your integration's PyPI dependencies (synced with
-# manifest.json → requirements). This is user-owned content; requirements_dev.txt
-# and requirements_test.txt are blueprint-managed tooling and do get synced.
+# manifest.json → requirements). This is user-owned content. requirements_dev.txt
+# remains blueprint-managed tooling; requirements_test.txt is repository-owned
+# because its Home Assistant test baseline must match the supported minimum, and
+# is excluded in the supported-version policy section below.
 requirements.txt
 
 # ── Command-line tools ──────────────────────────────────────
