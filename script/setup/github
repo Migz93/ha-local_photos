@@ -3,7 +3,8 @@
 # script/setup/github: Apply this repository's GitHub settings and rulesets
 #
 # Settings live on github.com, not in the repository, so a repository made from the blueprint starts without them.
-# Applies each one with gh, the same every time it runs; docs/development/REPOSITORY_SETUP.md lists what and why.
+# Applies each one with gh, the same every time it runs. The upstream setup reference lists what and why:
+# https://github.com/jpawlowski/ha-integration-blueprint/blob/4ef441e44ced1400dcdbdd8967423f5c21db9f55/docs/development/REPOSITORY_SETUP.md
 # --dry-run prints the calls without making them. Needs gh, signed in with admin rights on the repository.
 #
 # Usage:

@@ -73,11 +73,13 @@ script/architecture-check # conservative architecture guardrails (also part of l
 script/version           # read the canonical version from manifest.json
 script/ha-version-sync   # align the pinned Home Assistant version across config files, and mise's Python with it
 script/setup/toolchain   # install the tools mise.toml pins (--install-mise: mise itself too) — optional; not run by bootstrap
-script/setup/github      # apply the GitHub settings and .github/rulesets/ (--dry-run first) — see REPOSITORY_SETUP.md
+script/setup/github      # apply the GitHub settings and .github/rulesets/ (--dry-run first) — see the upstream setup reference below
 script/secret-scan       # betterleaks over --staged changes (manual or optional hook), a --range, or --all of the history
 script/clean             # remove caches, logs, build artifacts
 script/help              # list every script with its description
 ```
+
+See the [upstream repository setup reference](https://github.com/jpawlowski/ha-integration-blueprint/blob/4ef441e44ced1400dcdbdd8967423f5c21db9f55/docs/development/REPOSITORY_SETUP.md) for the settings managed by `script/setup/github`.
 
 `script/develop` is a **takeover**, not a "start if needed" — the run-loop rules, and why, are in
 [`ha-coordinator-debug`](../ha-coordinator-debug/SKILL.md).
