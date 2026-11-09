@@ -1,7 +1,7 @@
 # Template Sync Ignore File
 # ============================================================
 # Files and folders listed here will NOT be synced from the
-# upstream template (jpawlowski/hacs.integration_blueprint).
+# upstream template (jpawlowski/ha-integration-blueprint).
 #
 # Syntax follows .gitignore glob patterns.
 # See: https://github.com/AndreasAugustin/actions-template-sync
@@ -18,19 +18,9 @@ custom_components/
 tests/
 
 # ── Project configuration ─────────────────────────────────────
-# These files are customized for your integration during initialization
-# (initialize.sh replaces ha_integration_domain and related strings).
-# Syncing them back would revert those substitutions.
+# pyproject.toml holds your package metadata (set by initialize.sh) and
+# your own tool settings.
 pyproject.toml
-.yamllint.yml
-.pre-commit-config.yaml
-
-# ── Ignore pattern files ───────────────────────────────────────
-# .gitignore and .prettierignore contain a domain-specific negation pattern
-# (!custom_components/<your_domain>/) set by initialize.sh that cannot be
-# expressed as a generic placeholder. Syncing would revert that line.
-.gitignore
-.prettierignore
 
 # ── Runtime dependencies ──────────────────────────────────────
 # requirements.txt lists your integration's PyPI dependencies (synced with
@@ -38,9 +28,12 @@ pyproject.toml
 # and requirements_test.txt are blueprint-managed tooling and do get synced.
 requirements.txt
 
+# ── Command-line tools ──────────────────────────────────────
+# Your integration's own tools; mise.toml holds the blueprint's and does get synced.
+.config/mise/conf.d/project.toml
+
 # ── VS Code workspace settings ───────────────────────────────
-# launch.json and tasks.json reference your integration domain
-# in debugger arguments and task commands.
+# Where you add your own debug configurations and tasks.
 .vscode/launch.json
 .vscode/tasks.json
 
@@ -49,10 +42,17 @@ requirements.txt
 README.md
 README.template.md
 LICENSE
-initialize.sh
 hacs.json
 CONTRIBUTING.md
 DEPENDENCIES.md
+
+# ── Blueprint-specific files ─────────────────────────────────
+# Only meaningful in the blueprint; initialization deletes them (see PRUNE_PATHS in
+# script/prune-blueprint) and these entries stop the sync from reinstating them.
+initialize.sh
+script/tests/test_initialize.py
+docs/blueprint/
+.agents/skills/blueprint-skill-maintenance/
 
 # ── AI agent instruction files ───────────────────────────────
 # Project-identity files are customized during initialization and must not be
@@ -60,17 +60,11 @@ DEPENDENCIES.md
 # URL, etc.). The path-specific *.instructions.md files under .agents/instructions/
 # use generic placeholders and ARE safely synced from the template.
 AGENTS.md
-CODEX.md
 CLAUDE.md
-.github/copilot-instructions.md
 
 # ── Agent skills ─────────────────────────────────────────────
 # Skills under .agents/skills/ use generic placeholders and ARE safely synced,
 # so you keep receiving blueprint improvements.
-#
-# This one is only meaningful inside the blueprint repository itself.
-# initialize.sh deletes it; this entry stops the sync from reinstating it.
-.agents/skills/blueprint-skill-maintenance/
 #
 # Skills YOU add are never touched — template sync only overwrites files that
 # changed upstream, and a directory the blueprint does not have is not one of
@@ -99,6 +93,9 @@ AI_POLICY.md
 # Your custom pre/post hooks live here — never overwritten by template sync
 script/hooks/
 .devcontainer/hooks/
+#
+# Your project's own dev container additions, such as required VS Code extensions
+.devcontainer/project-feature/
 
 # ── DevContainer environment overrides ───────────────────────
 # .env contains your project's HA_VERSION pin and other settings.
@@ -137,6 +134,3 @@ uv.lock
 # Issue templates are shipped once with the blueprint and then
 # maintained per-project. They don't need to be kept in sync.
 .github/ISSUE_TEMPLATE/
-
-# Repository-owned CodeRabbit review scope
-.coderabbit.yaml
