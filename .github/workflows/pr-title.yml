@@ -18,9 +18,9 @@ concurrency:
 jobs:
   pr-title:
     name: PR title
-    # A body edit leaves the title as it was; only a title edit needs the check again. Dependabot names both commit
-    # hashes of a digest-pinned action in the title, which no sensible length limit fits.
-    if: ${{ !github.event.pull_request.draft && github.event.pull_request.user.login != 'dependabot[bot]' && (github.event.action != 'edited' || github.event.changes.title != null) }}
+    # Recheck body edits too: a skipped job could replace a failed title check on the same commit.
+    # Drafts cannot merge; ready_for_review checks their title. Dependabot digest titles are exempt.
+    if: ${{ !github.event.pull_request.draft && github.event.pull_request.user.login != 'dependabot[bot]' }}
     runs-on: ubuntu-26.04
     timeout-minutes: 5
     permissions:

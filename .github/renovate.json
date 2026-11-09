@@ -93,7 +93,7 @@
       "minimumReleaseAge": "7 days"
     },
     {
-      "description": "These actions take a tool version beside their pin, so Renovate raises both together; dependabot.yml ignores them.",
+      "description": "Dependabot retains these actions. Coordinated Renovate updates require an owner decision and matching Dependabot exclusions before this rule is enabled.",
       "matchManagers": ["github-actions"],
       "matchDepNames": ["trufflesecurity/trufflehog", "jdx/mise-action"],
       "enabled": false
@@ -124,7 +124,7 @@
       "addLabels": ["home-assistant"]
     },
     {
-      "description": "The secret scanners carry their detection rules in the binary, so a release is mostly new rules: outside the weekly schedule, still after the release age, and merged once the pull request's checks are green. A release that finds something keeps them red and the pull request open.",
+      "description": "Scanner updates can arrive outside the weekly schedule after the release age. Checks must pass and the owner merges them manually; automatic merging stays disabled.",
       "matchDepNames": ["betterleaks", "trufflesecurity/trufflehog"],
       "groupName": "security scanners",
       "addLabels": ["security"],

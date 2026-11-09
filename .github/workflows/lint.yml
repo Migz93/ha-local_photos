@@ -54,7 +54,10 @@ jobs:
             exit 0
           fi
           head=$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${pr}" --jq .head.sha)
-          git fetch --quiet origin "pull/${pr}/head"
+          if ! git fetch --quiet origin "pull/${pr}/head"; then
+            echo "Could not inspect the merged PR ref - running all checks"
+            exit 0
+          fi
           passed=$(gh api "repos/${GITHUB_REPOSITORY}/commits/${head}/check-runs?check_name=Lint%20and%20test" \
             --jq '[.check_runs[] | select(.conclusion == "success")] | length')
           if [[ "$(git rev-parse "${SHA}^{tree}")" == "$(git rev-parse "FETCH_HEAD^{tree}")" && "${passed}" -gt 0 ]]; then
