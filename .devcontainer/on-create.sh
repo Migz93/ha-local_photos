@@ -48,9 +48,9 @@ if [[ -f "$_hook_file" ]]; then
 fi
 unset _hook_file
 
-# Docker creates each volume mount point as root:root. Volumes sit directly under $HOME so that Docker never
-# creates ~/.config, ~/.local or ~/.cache as root, which VS Code server writes to before this script runs.
-print_info "Fixing ownership of Docker volume mount points..."
+# Development directories may be created as root by image tooling or runtime mounts.
+# Repair only existing directories; this project has no persistent development volumes.
+print_info "Checking ownership of development directories..."
 for _volume_mount in \
     /home/vscode/ha-venv \
     /home/vscode/uv-cache \

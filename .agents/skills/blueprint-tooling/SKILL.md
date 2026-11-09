@@ -74,7 +74,7 @@ script/version           # read the canonical version from manifest.json
 script/ha-version-sync   # align the pinned Home Assistant version across config files, and mise's Python with it
 script/setup/toolchain   # install the tools mise.toml pins (--install-mise: mise itself too) — optional; not run by bootstrap
 script/setup/github      # apply the GitHub settings and .github/rulesets/ (--dry-run first) — see REPOSITORY_SETUP.md
-script/secret-scan       # betterleaks over --staged changes (the commit hook), a --range, or --all of the history
+script/secret-scan       # betterleaks over --staged changes (manual or optional hook), a --range, or --all of the history
 script/clean             # remove caches, logs, build artifacts
 script/help              # list every script with its description
 ```
