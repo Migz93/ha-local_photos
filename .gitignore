@@ -76,3 +76,7 @@ Thumbs.db
 # Private local instructions and agent permissions
 LOCAL.md
 .claude/settings.local.json
+
+.agents/scratch/
+
+mise.local.toml

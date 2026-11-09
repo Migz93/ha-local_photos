@@ -66,7 +66,7 @@ as if it were user-facing, while the `ci` **type** is `hidden` in
 5. Breaking changes: add `BREAKING CHANGE:` footer **and** warn the developer before implementing
 6. Multiple unrelated changes → separate commits, not one large commit
 7. **A pull request title is a commit subject.** Pull requests are squash-merged by default, with the title as the
-   commit on `main`, so it follows rule 3 and the types above; the `PR title` check enforces it. A pull request
+   commit on `main`, so it follows rule 3 and the types above; the `PR title` check enforces it where configured. A pull request
    rebase-merged instead keeps each commit, so each one must follow these rules
 
 ## Example
