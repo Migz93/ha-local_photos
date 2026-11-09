@@ -129,7 +129,7 @@ activate_venv() {
     local venv_path
     if ! venv_path="$(resolve_venv_path)"; then
         if [[ "$(run_state bootstrap)" == "running" ]]; then
-            log_error "The development environment is still being set up — wait for .local/bootstrap.status to change, progress is in .local/bootstrap.log"
+            log_error "The development environment is still being set up — wait for .local/bootstrap.status to change, then rerun this command"
         else
             log_error "Virtual environment not found. Run: script/setup/bootstrap"
         fi
