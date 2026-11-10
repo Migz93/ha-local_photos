@@ -3,13 +3,13 @@ name: Validate
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 0 * * *"
-  push:
-    branches:
-      - main
+    # Weekly is enough to notice a change in hassfest or the HACS action between pull requests.
+    - cron: "0 0 * * 1"
   pull_request:
     branches:
       - main
+    # A draft spends no minutes; marking it ready for review runs everything.
+    types: [opened, synchronize, reopened, ready_for_review]
 
 permissions: {}
 
@@ -18,9 +18,29 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  hassfest: # https://developers.home-assistant.io/blog/2020/04/16/hassfest
+  hassfest: # https://contributors.home-assistant.io/blog/2020/04/16/hassfest/
     name: Hassfest validation
-    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
+    runs-on: ubuntu-26.04
+    permissions:
+      contents: read # check out the repository
+    steps:
+      - name: Checkout the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # The Home Assistant version the dev container installs, so a rule newer than that cannot fail it
+      - name: Run hassfest validation
+        run: |
+          version=$(bash script/.lib/ha_version.sh)
+          docker run --rm -v "${GITHUB_WORKSPACE}:/github/workspace" "ghcr.io/home-assistant/hassfest:${version}"
+
+  hassfest-dev:
+    name: Hassfest with Home Assistant dev
+    # An early warning of rules the next release brings: never on pull requests, so it cannot block a merge
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-26.04
     permissions:
       contents: read # check out the repository
     steps:
@@ -30,16 +50,44 @@ jobs:
           persist-credentials: false
 
       - name: Run hassfest validation
-        uses: home-assistant/actions/hassfest@58bff37c8947f690ace498be413a9b78d6f30f93 # master
+        uses: home-assistant/actions/hassfest@86d4564712fa02543c808e3a693dd04f9d3f8361 # master
 
   hacs: # https://github.com/hacs/action
     name: HACS validation
-    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
+    runs-on: ubuntu-26.04
+    permissions:
+      contents: read # check out the repository
     steps:
+      - name: Checkout the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # The action reads the repository without a token and refuses a private one; the catalog only lists public ones
+      - name: Detect a private repository
+        id: repository
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [[ "$(gh api "repos/${GITHUB_REPOSITORY}" --jq .private)" == "true" ]]; then
+            echo "::notice::Private repository - skipping HACS validation until it is made public"
+            echo "private=true" >>"$GITHUB_OUTPUT"
+          fi
+
+      - name: Detect brand images
+        id: brand
+        run: |
+          if compgen -G "custom_components/*/brand/icon.png" >/dev/null; then
+            echo "ignore=" >>"$GITHUB_OUTPUT"
+          else
+            echo "::warning::No custom_components/<domain>/brand/icon.png - skipping the brands check the Marketplace catalog requires"
+            echo "ignore=brands" >>"$GITHUB_OUTPUT"
+          fi
+
       - name: Run HACS validation
+        if: steps.repository.outputs.private != 'true'
         uses: hacs/action@d556e736723344f83838d08488c983a15381059a # 22.5.0
         with:
           category: integration
-          # Remove this 'ignore' key when you have added brand images for your integration
-          # https://developers.home-assistant.io/docs/creating_integration_file_structure/#brand-images---brand
-          ignore: brands
+          ignore: ${{ steps.brand.outputs.ignore }}

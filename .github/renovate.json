@@ -1,0 +1,138 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "description": [
+    "Renovate optionally covers mise.toml, mise version pins and annotated workflow inputs. Inert without the Renovate GitHub App; Dependabot retains the existing package ecosystems.",
+    "Runtime manifests and the Home Assistant test baseline remain owner-managed. Coordinated Renovate runtime updates require an explicit migration of both requirements.txt and manifest.json away from the current Dependabot policy.",
+    "script/template-sync-guard reads the managers and patterns here to know which pins a template sync must not lower."
+  ],
+  "extends": [
+    "config:best-practices",
+    ":semanticCommits",
+    ":semanticCommitTypeAll(chore)",
+    ":semanticCommitScope(deps)"
+  ],
+  "enabledManagers": ["mise", "pip_requirements", "custom.regex", "github-actions", "npm", "devcontainer"],
+  "ignorePaths": ["**/node_modules/**"],
+  "minimumReleaseAge": "3 days",
+  "schedule": ["* 0-5 * * 1"],
+  "labels": ["dependencies"],
+  "vulnerabilityAlerts": {
+    "description": "Needs Dependabot alerts on in the repository settings. Users only receive a fixed version with a new release.",
+    "semanticCommitType": "fix",
+    "addLabels": ["security"]
+  },
+  "mise": {
+    "managerFilePatterns": ["/(^|/)mise\\.devcontainer\\.toml$/", "/(^|/)\\.config/mise/conf\\.d/[^/]+\\.toml$/"]
+  },
+  "customManagers": [
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/(^|/)custom_components/[^/]+/manifest\\.json$/"],
+      "matchStrings": ["\"(?<depName>[A-Za-z0-9][A-Za-z0-9._-]*)(?:\\[[^\\]]*\\])?==(?<currentValue>[^\"\\s;]+)\""],
+      "datasourceTemplate": "pypi"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/(^|/)mise\\.toml$/", "/(^|/)\\.devcontainer/devcontainer\\.json$/"],
+      "matchStrings": [
+        "min_version = \"(?<currentValue>[^\"]+)\"",
+        "\"ghcr\\.io/devcontainers-extra/features/mise:\\d+(?:@sha256:[a-f0-9]+)?\":\\s*\\{\\s*\"version\":\\s*\"(?<currentValue>[^\"]+)\""
+      ],
+      "depNameTemplate": "jdx/mise",
+      "datasourceTemplate": "github-releases",
+      "extractVersionTemplate": "^v(?<version>.+)$"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/(^|/)\\.github/workflows/[^/]+\\.ya?ml$/"],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)(?: extractVersion=(?<extractVersion>\\S+))?\\n\\s+version: \"?(?<currentValue>[^\"\\s]+)\"?"
+      ]
+    }
+  ],
+  "packageRules": [
+    {
+      "description": "Dependabot retains these package ecosystems. Enabling Renovate updates requires an owner-approved migration and matching Dependabot exclusions; the rules below do not enable them.",
+      "matchManagers": ["github-actions", "npm", "devcontainer", "pip_requirements"],
+      "enabled": false
+    },
+    {
+      "matchFileNames": ["custom_components/*/manifest.json"],
+      "enabled": false,
+      "description": "Keep runtime manifests owner-managed with requirements.txt; do not enable a manifest-only updater while pip requirements remain with Dependabot."
+    },
+    {
+      "description": "Runtime: what Home Assistant installs for users. One pull request per package; a routine bump stays `chore`, only a security fix is worth a release of its own.",
+      "matchFileNames": ["requirements.txt", "custom_components/*/manifest.json"],
+      "addLabels": ["runtime"]
+    },
+    {
+      "description": "A runtime major waits on the dependency dashboard for a person.",
+      "matchFileNames": ["requirements.txt", "custom_components/*/manifest.json"],
+      "matchUpdateTypes": ["major"],
+      "dependencyDashboardApproval": true
+    },
+    {
+      "description": "Tooling: everything that runs the checks, CI and the editor moves in one grouped pull request a week; a major update gets one of its own.",
+      "matchManagers": ["mise", "github-actions", "npm", "devcontainer"],
+      "groupName": "tooling",
+      "addLabels": ["tooling"]
+    },
+    {
+      "matchFileNames": [
+        "mise.toml",
+        ".devcontainer/devcontainer.json",
+        ".github/workflows/**",
+        "requirements_dev.txt"
+      ],
+      "groupName": "tooling",
+      "addLabels": ["tooling"]
+    },
+    {
+      "description": "A new action version settles a week before it runs with the repository's token, as in Home Assistant Core.",
+      "matchManagers": ["github-actions"],
+      "minimumReleaseAge": "7 days"
+    },
+    {
+      "description": "Dependabot retains these actions. Coordinated Renovate updates require an owner decision and matching Dependabot exclusions before this rule is enabled.",
+      "matchManagers": ["github-actions"],
+      "matchDepNames": ["trufflesecurity/trufflehog", "jdx/mise-action"],
+      "enabled": false
+    },
+    {
+      "description": "Home Assistant decides the Python version. Raise it by hand together with the Home Assistant version.",
+      "matchManagers": ["mise"],
+      "matchUpdateTypes": ["major", "minor"],
+      "enabled": false,
+      "matchDepNames": ["python"]
+    },
+    {
+      "description": "ShellCheck is the shell linter with no real alternative, so a year without a release is not abandonment.",
+      "matchPackageNames": ["koalaman/shellcheck"],
+      "abandonmentThreshold": null
+    },
+    {
+      "description": "Renovate's own engines refuse a Node major newer than this.",
+      "matchManagers": ["mise"],
+      "matchDepTypes": ["task-renovate-dry-run-tools"],
+      "allowedVersions": "<25",
+      "matchDepNames": ["node"]
+    },
+    {
+      "description": "Raise this pin manually with the supported Home Assistant minimum and test baseline. Dependabot also excludes it; optional Renovate must preserve the same policy.",
+      "matchPackageNames": ["pytest-homeassistant-custom-component"],
+      "groupName": "Home Assistant test environment",
+      "addLabels": ["home-assistant"],
+      "enabled": false
+    },
+    {
+      "description": "Scanner updates can arrive outside the weekly schedule after the release age. Checks must pass and the owner merges them manually; automatic merging stays disabled.",
+      "matchDepNames": ["betterleaks", "trufflesecurity/trufflehog"],
+      "groupName": "security scanners",
+      "addLabels": ["security"],
+      "schedule": ["at any time"],
+      "automerge": false,
+      "automergeStrategy": "squash"
+    }
+  ]
+}

@@ -3,9 +3,9 @@ name: blueprint-tooling
 description: >-
   Use this repository's development tooling correctly — the script/ validation and formatting commands, the
   fix-versus-check distinction, hassfest, adding a Python dependency in both manifest.json and requirements.txt,
-  extending scripts with pre/post hook scripts, devcontainer environment variables, and template sync from the
+  the mise toolchain and which dependency bot raises what, extending scripts with pre/post hook scripts, devcontainer environment variables, and template sync from the
   upstream blueprint. Use when asked to "run the checks", "fix the lint errors", "why is CI failing", "add a
-  dependency", "add a package", "add a hook", "customize the setup", "exclude a file from template sync", or when
+  dependency", "add a package", "add a tool", "update mise", "add a hook", "customize the setup", "exclude a file from template sync", or when
   a validation command fails and you need to know which script to reach for. SYMPTOMS — load this if you are about
   to: run `ruff`, `pyright`, `pytest`, or `hass` directly instead of the project script; run a `-check` script
   after a fix script; add a dependency to only one of `manifest.json` and `requirements.txt`; or edit a
@@ -68,16 +68,27 @@ script/ha                # query and control the running instance (see below)
 script/setup/seed-auth   # mint the token script/ha uses — run by script/develop
 script/hassfest          # official HA validation (first run downloads ~27 MB)
 script/test              # integration tests plus synchronized tooling tests
-script/skills-check      # validate .agents/skills/ (also part of lint / lint-check)
+script/skills-check      # validate .agents/skills/ and agent protected paths (also part of lint / lint-check)
 script/architecture-check # conservative architecture guardrails (also part of lint / lint-check) — see below
 script/version           # read the canonical version from manifest.json
-script/ha-version-sync   # align the pinned Home Assistant version across config files
+script/ha-version-sync   # align the pinned Home Assistant version across config files, and mise's Python with it
+script/setup/toolchain   # install the tools mise.toml pins (--install-mise: mise itself too) — optional; not run by bootstrap
+script/setup/github      # apply the GitHub settings and .github/rulesets/ (--dry-run first) — see the upstream setup reference below
+script/secret-scan       # betterleaks over --staged changes (manual or optional hook), a --range, or --all of the history
 script/clean             # remove caches, logs, build artifacts
 script/help              # list every script with its description
 ```
 
+See the [upstream repository setup reference](https://github.com/jpawlowski/ha-integration-blueprint/blob/4ef441e44ced1400dcdbdd8967423f5c21db9f55/docs/development/REPOSITORY_SETUP.md) for the settings managed by `script/setup/github`.
+
 `script/develop` is a **takeover**, not a "start if needed" — the run-loop rules, and why, are in
 [`ha-coordinator-debug`](../ha-coordinator-debug/SKILL.md).
+
+**HACS validation has no local script.** The `hacs` job in `.github/workflows/validate.yml` runs the
+[HACS action](https://github.com/hacs/action) in CI only. It skips itself with a notice on a private repository,
+which the action cannot read, and adds `ignore: brands` with a warning while `brand/icon.png` is missing — so a green
+job proves less than it looks. What it checks, and why `ignore` is never the fix:
+[`ha-marketplace`](../ha-marketplace/SKILL.md).
 
 ### architecture-check vs. tests/
 
@@ -130,17 +141,50 @@ Assistant design constraint, not a repository quirk.
    same imports.
 3. `script/setup/bootstrap` (or a container rebuild) to install it.
 
-Pin versions in both, and keep them identical.
+Pin versions in both, and keep them identical. Dependabot continues checking `requirements.txt`; verify the
+matching manifest pin when reviewing an update. Renovate can coordinate both files if the owner opts in.
 
 | File                     | Template sync  | Contents                                         |
 | ------------------------ | -------------- | ------------------------------------------------ |
 | `requirements.txt`       | ❌ excluded    | your integration's runtime dependencies          |
 | `requirements_dev.txt`   | ✅ synced      | shared development tooling — do not add app deps |
-| `requirements_test.txt`  | ✅ synced      | shared test dependencies                         |
+| `requirements_test.txt`  | ❌ excluded    | repository-owned Home Assistant test baseline    |
 | `requirements.local.txt` | — (gitignored) | your personal extras (`ipdb`, profilers, …)      |
 
 Before adding a dependency at all, decide whether you want it: the criteria are in `AGENTS.md` § Custom Integration
 Flexibility, and the choice belongs in `docs/development/DECISIONS.md` ([`ha-planning`](../ha-planning/SKILL.md)).
+For a serial port that means `serialx`, not `pyserial-asyncio` — the replacement table is in
+[`ha-modern-apis`](../ha-modern-apis/references/deprecations.md).
+
+Every package you add ships to every user, so check it like Core does
+([`dependency-transparency`](https://contributors.home-assistant.io/core/quality-scale/dependency-transparency/)),
+and report what you could not verify rather than assuming it:
+
+- **Adding:** published on PyPI with a source distribution, an OSI-approved licence, a public repository and an open
+  issue tracker, and the PyPI version matches a tagged release built by public CI.
+- **Bumping**, Renovate's pull requests included: read the upstream diff or changelog, not just the version. Look for
+  new network calls, `subprocess` or `os.system`, new file or environment access, new transitive dependencies, a
+  changed licence, a new PyPI maintainer, or a repository that moved or was archived. Any of these goes to the
+  developer before the merge.
+
+## Command-line tools and dependency updates
+
+The development container keeps its image-provided Python and command-line tools. Run project setup and checks
+inside that container, as described in `AGENTS.md`; setup does not install mise or tools on the host.
+
+`mise.toml` provides the upstream tool pins used by CI. `script/setup/toolchain` is an optional, explicit way to
+install those pins inside a development environment. Project additions belong in `.config/mise/conf.d/project.toml`,
+which template sync leaves alone. Personal mise overrides belong in the ignored `mise.local.toml`.
+`script/ha-version-sync` checks the Python pin against the supported Home Assistant release.
+
+Dependabot retains the repository's existing coverage, including `requirements.txt` and GitHub Actions. When a
+runtime package changes, review and update the matching `manifest.json` pin as well. Keep the Home Assistant test
+dependency on the release train declared in `hacs.json`; a new train is a separate compatibility decision.
+
+`.github/renovate.json` is optional configuration. It needs the Renovate GitHub App and an owner decision to adopt it.
+Before enabling it, coordinate its coverage with Dependabot to avoid duplicate updates. Scanner updates retain
+manual merge approval. `mise run renovate-dry-run` can show proposed updates without opening pull requests.
+The optional `toolchain-update-check.yml` workflow reports outdated pins when Renovate is inactive.
 
 ## Extending the scripts with hooks
 
@@ -162,11 +206,11 @@ Two layers, both sourced by the lifecycle scripts:
 | `.devcontainer/.env`       | ✅ yes             | project defaults for everyone  |
 | `.devcontainer/.env.local` | ❌ no (gitignored) | personal overrides, always win |
 
-| Variable          | Default                  | Effect                                                    |
-| ----------------- | ------------------------ | --------------------------------------------------------- |
-| `HA_VERSION`      | version from `hacs.json` | `latest`, `beta`, `YEAR.MONTH`, or an exact version       |
-| `HA_INSTALL_HACS` | `1`                      | `0` skips the HACS install and speeds up first-time setup |
-| `APT_UPDATE`      | `0`                      | `1` runs `apt-get update && upgrade` during setup         |
+| Variable          | Default                  | Effect                                                                               |
+| ----------------- | ------------------------ | ------------------------------------------------------------------------------------ |
+| `HA_VERSION`      | version from `hacs.json` | `latest`, `beta`, `YEAR.MONTH`, or an exact version                                  |
+| `HA_INSTALL_HACS` | `1`                      | `0` skips the HACS install; ignored from 2026.11, which has the Marketplace built in |
+| `APT_UPDATE`      | `0`                      | `1` runs `apt-get update && upgrade` during setup                                    |
 
 Changes require **Dev Containers: Rebuild Container**. These files are not visible to devcontainer _features_ or
 `containerEnv` — those are set at image build time and must be edited in `devcontainer.json`.
@@ -192,6 +236,12 @@ Review before merging.
 - Do not add generated or personal files — untracked files are never touched by sync anyway.
 - Workflow files under `.github/workflows/` only sync when a `TEMPLATE_SYNC_TARGET_PAT` secret with `workflows: write`
   exists; otherwise those updates are skipped with a notice in the run summary.
+- A version pin the repository's own bots raised further than the template survives the sync:
+  `script/template-sync-guard` restores it on the sync branch and comments what it kept. That step lives in
+  `template-sync.yml`, which the sync never updates, so a repository created before it existed copies the step over
+  by hand. A sync PR that lowers a version anyway was produced without the step.
+- Changes the sync cannot deliver — to excluded files such as `AGENTS.md`, or steps a repository has to take itself —
+  are carried over with [`blueprint-update`](../blueprint-update/SKILL.md) and `script/blueprint-update`.
 
 Background, recovery procedures, and the default exclusion list are in
 [`docs/development/CUSTOMIZATION.md`](../../../docs/development/CUSTOMIZATION.md).

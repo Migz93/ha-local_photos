@@ -1,0 +1,11 @@
+# Optional terminal-tool pins for a development container using mise.
+# Opt in explicitly inside the container with: MISE_ENV=devcontainer script/setup/toolchain
+# The normal development container uses its image-provided tools.
+[tools]
+bat = "0.26.1"
+delta = "0.20.1"
+eza = "0.23.5"
+fzf = "0.74.5"
+hyperfine = "2.0.0"
+just = "1.59.0"
+miller = "6.22.0"
