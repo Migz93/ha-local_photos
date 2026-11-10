@@ -1,6 +1,8 @@
 # Deprecated Home Assistant APIs and their replacements
 
-Verified against the Home Assistant version pinned in this devcontainer. Check with:
+**Supported baseline: Home Assistant 2026.8.** This is a versioned upstream reference. Later-version examples and
+status labels describe their named releases, not APIs guaranteed on the project's supported baseline. Preserve
+2026.8 compatibility; a minimum-version increase requires approval. Check the installed version with:
 
 ```bash
 .venv/bin/python -c "from homeassistant.const import __version__; print(__version__)"
@@ -14,11 +16,10 @@ rg -n "deprecated|breaks_in_ha_version" .venv/lib/python*/site-packages/homeassi
 
 The device registry has its own file: [`device-registry.md`](device-registry.md).
 
-**How to read the "Removed in" column.** A version means the old form still works in the pinned version and logs a
-warning until then — `breaks_in_ha_version` from the source. **gone** means it no longer exists in the pinned version,
-so old code fails right away. **overdue** means the removal version has passed but the old form is still there; it can
-vanish in any release. **—** means not deprecated upstream, but wrong in this project. How tests catch the logged
-ones: [`ha-testing`](../../ha-testing/SKILL.md#two-settings-that-surprise-people).
+**How to read the "Removed in" column.** Versions record upstream removal targets (`breaks_in_ha_version`).
+**gone** and **overdue** describe the upstream reference state, not a verified status on this project's 2026.8
+baseline. Check the installed source for availability and replacement signatures before changing code. **—** marks
+an unversioned recommendation. Logged deprecations need an explicit test fixture or a manual log check: [`ha-testing`](../../ha-testing/SKILL.md#two-settings-that-surprise-people).
 
 ## Schema validation — `voluptuous` replaced by `probatio`
 

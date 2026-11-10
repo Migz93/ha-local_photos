@@ -1,7 +1,9 @@
 # Device registry — single owner, child devices, lookups
 
-Verified against the Home Assistant version pinned in this devcontainer. When an entry here disagrees with the installed
-source, the source wins:
+**Supported baseline: Home Assistant 2026.8.** This is a versioned upstream reference, not a guarantee that every
+listed API exists in the supported release. Later-version examples and removal labels describe their named upstream
+releases; they do not raise this project's minimum. Preserve compatibility with 2026.8 and require approval for a
+minimum-version increase. Before using an API, verify it in the installed source:
 
 ```bash
 rg -n "breaks_in_ha_version" .venv/lib/python*/site-packages/homeassistant/helpers/device_registry.py
@@ -76,9 +78,11 @@ the source device's identifiers into this integration's `DeviceInfo` — that us
 device, which a single-owner device cannot represent. Clean up devices a helper created for earlier source devices with
 `homeassistant.helpers.helper_integration.async_remove_helper_devices(..., remove_all_devices=True)`.
 
-## Deprecated — still works in the pinned version, logs a warning
+## Deprecated APIs and announced removal versions
 
-These are logged and keep working until the version in the last column. How tests catch them:
+The last column records upstream removal targets. Check the installed 2026.8 source for current availability and
+warnings; these rows do not guarantee that every replacement exists on that baseline. Logged warnings need an
+explicit test fixture or a manual log check, as described in:
 [`ha-testing`](../../ha-testing/SKILL.md#two-settings-that-surprise-people).
 
 | Do not use                                                                                                  | Use instead                                                                        | Removed in |
@@ -99,7 +103,7 @@ These are logged and keep working until the version in the last column. How test
 | `DeviceEntry.config_entries`, `.config_entries_subentries`, `.primary_config_entry`                         | `DeviceEntry.config_entry_id`, `.config_subentry_id`                               | 2027.10    |
 | A non-string value (an `int` firmware version, an enum) for `sw_version`, `model`, … — coerced with `str()` | Pass a `str`                                                                       | 2026.12    |
 
-## Overdue — past its removal version, can disappear in any release
+## Scheduled for removal in Home Assistant 2026.9
 
 | Do not use                               | Use instead                                                  | Was due |
 | ---------------------------------------- | ------------------------------------------------------------ | ------- |
@@ -109,7 +113,7 @@ These are logged and keep working until the version in the last column. How test
 Setting `suggested_area` in `DeviceInfo`, `ChildDeviceInfo` or `async_get_or_create` is **not** deprecated: it places a
 new device in that area when it is first registered.
 
-## Upcoming (HA 2026.11+)
+## API changes in Home Assistant 2026.11+
 
 - **`DeviceInfo` and `ChildDeviceInfo` become dataclasses.** Construct them with keyword arguments —
   `DeviceInfo(identifiers=…, name=…)` — which already works on 2026.10, and the code needs no change. Subscript access,

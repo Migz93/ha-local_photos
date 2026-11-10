@@ -148,7 +148,7 @@ matching manifest pin when reviewing an update. Renovate can coordinate both fil
 | ------------------------ | -------------- | ------------------------------------------------ |
 | `requirements.txt`       | ❌ excluded    | your integration's runtime dependencies          |
 | `requirements_dev.txt`   | ✅ synced      | shared development tooling — do not add app deps |
-| `requirements_test.txt`  | ✅ synced      | shared test dependencies                         |
+| `requirements_test.txt`  | ❌ excluded    | repository-owned Home Assistant test baseline    |
 | `requirements.local.txt` | — (gitignored) | your personal extras (`ipdb`, profilers, …)      |
 
 Before adding a dependency at all, decide whether you want it: the criteria are in `AGENTS.md` § Custom Integration
