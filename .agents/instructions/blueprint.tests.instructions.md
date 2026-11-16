@@ -47,7 +47,9 @@ tests/
 
 ## Fixtures
 
-**Defined in `tests/conftest.py`** — use these names, never a per-file variant:
+**Suggested shared-fixture contracts** — inspect `tests/conftest.py` first, if it exists. The names below describe
+examples, not fixtures guaranteed to be present in this repository. Reuse existing fixtures; define missing ones
+only when test work is explicitly requested, following the bootstrap guidance in `ha-testing`:
 
 - `auto_enable_custom_integrations` - autouse wrapper around `enable_custom_integrations`
 - `config_entry` - `MockConfigEntry`, not yet added to `hass`

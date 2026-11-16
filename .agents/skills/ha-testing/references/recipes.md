@@ -4,7 +4,7 @@ Variants of the shared fixtures and patterns in [`../SKILL.md`](../SKILL.md) tha
 
 ## `mock_api` for a third-party library client
 
-The default `mock_api` patches the client's HTTP method, so the client's own payload handling stays under test. When
+A project-defined `mock_api` can patch the client's HTTP method, so the client's own payload handling stays under test. When
 the client is a third-party library instead, keep the fixture name and patch the library class **where the integration
 imports it** — every import site, since setup and the config flow's validator each import it separately:
 

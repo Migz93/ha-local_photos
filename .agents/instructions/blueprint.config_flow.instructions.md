@@ -55,7 +55,14 @@ inferred ID is wrong whenever one step method calls another.
 
 ### Form Schemas
 
-Schemas are written with Probatio (`import probatio`), the validation library Home Assistant uses — not voluptuous.
+**Supported baseline:** This project supports Home Assistant 2026.8 and keeps `import voluptuous as vol` for schemas.
+Examples using `probatio` require Home Assistant 2026.9+; do not copy those imports or newer validators into code
+that must support 2026.8. Keep the existing `vol` schemas and validators until a minimum-version increase is approved.
+Do not add `probatio` as an integration requirement to work around the baseline.
+
+The `probatio` examples below describe Home Assistant 2026.9+ APIs. For the supported 2026.8 baseline, use the
+corresponding existing `vol.Schema`, `vol.Required`, `vol.Optional` and other shared APIs; `probatio.Port` and
+`probatio.Secret` are newer-only examples, not instructions to change the current schemas.
 
 **Simple fields** - `probatio.Required("field"): str`, `probatio.Optional("field", default=value): int`
 

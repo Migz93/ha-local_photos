@@ -14,6 +14,11 @@ description: >-
 
 # Work on the config flow
 
+**Supported baseline:** This project supports Home Assistant 2026.8 and keeps `import voluptuous as vol` for schemas.
+Examples using `probatio` require Home Assistant 2026.9+; do not copy those imports or newer validators into code
+that must support 2026.8. Keep the existing `vol` schemas and validators until a minimum-version increase is approved.
+Do not add `probatio` as an integration requirement to work around the baseline.
+
 The config flow is the only supported way to configure a device or service integration (ADR-0010). Everything the user
 can change lives here, and mistakes here are expensive: `unique_id` and the shape of `entry.data` are effectively
 permanent.

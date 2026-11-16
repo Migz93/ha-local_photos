@@ -97,7 +97,9 @@ type {ClassPrefix}ConfigEntry = ConfigEntry[{ClassPrefix}Data]
 entry.runtime_data = {ClassPrefix}Data(client=client, coordinator=coordinator, integration=integration)
 ```
 
-**3. Tests catch Home Assistant's deprecations through a fixture, not through `warnings`** — see
+**3. Logged Home Assistant deprecations need an explicit check.** Python `warnings` filters do not catch them.
+Tests catch them only if the suite implements a suitable `caplog` check; inspect `tests/conftest.py` rather than
+assuming a fixture exists. Otherwise check the runtime logs directly — see
 [`ha-testing`](../ha-testing/SKILL.md#two-settings-that-surprise-people). Fix the deprecation; never filter it.
 
 ## Fixing a deprecation warning

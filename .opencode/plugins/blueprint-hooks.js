@@ -39,10 +39,6 @@ export default {
   async setup(ctx) {
     const root = ctx.location.project.directory;
 
-    // OpenCode has no session-start hook and no CLAUDE_ENV_FILE: the setup runs when the plugin loads, and every
-    // shell gets what `mise env` resolves instead.
-    runHook(root, ".agents/hooks/session-start.sh", { hook_event_name: "SessionStart", cwd: ctx.location.directory });
-
     await ctx.shell.hook("create.before", async (event) => {
       const resolved = await miseEnv(event.cwd ?? root, event.env ?? {});
       if (Object.keys(resolved).length > 0) event.env = { ...event.env, ...resolved };

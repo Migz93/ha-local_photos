@@ -93,15 +93,14 @@ jobs:
             pinned=$(sed -n 's/^min_version *= *"\([^"]*\)".*/\1/p' mise.toml)
             latest=$(gh api repos/jdx/mise/releases/latest --jq '.tag_name | ltrimstr("v")')
             if [[ -n "${pinned}" && "${pinned}" != "${latest}" ]]; then
-              echo "| \`mise\` (min_version, workflows, dev container) | ${pinned} | ${latest} |"
+              echo "| \`mise\` (min_version, workflows) | ${pinned} | ${latest} |"
             fi
           } > rows.md
           if [[ -s rows.md ]]; then
             {
               echo "These pins have newer releases. Renovate is not active on this repository, so they are raised"
               echo "by hand: update \`mise.toml\` or \`mise.devcontainer.toml\`, and for \`mise\` itself also"
-              echo "the \`version:\` input of \`jdx/mise-action\` in the workflows and the mise feature in"
-              echo "\`.devcontainer/devcontainer.json\`."
+              echo "the \`version:\` input of \`jdx/mise-action\` in the workflows."
               echo "Python follows Home Assistant — raise it only within what \`script/ha-version-sync\` accepts."
               echo ""
               echo "| Tool | Pinned | Latest |"

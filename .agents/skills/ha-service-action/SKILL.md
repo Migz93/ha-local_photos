@@ -5,7 +5,7 @@ description: >-
   integration. Use when asked to "add a service", "add an action", "expose X as a service call", "add a service
   that returns data", "make this callable from an automation", or when editing services.yaml, the service_actions/
   package, service schemas, service response data, or the async_setup() registration. Covers the services.yaml
-  contract, probatio schemas, selectors, entity/device targeting, response data, translated error messages, and
+  contract, baseline-compatible schemas, selectors, entity/device targeting, response data, translated error messages, and
   the Bronze quality-scale rule that actions must be registered in async_setup(). SYMPTOMS — load this if you are
   about to: register an action in `async_setup_entry()`; add a `services.yaml` field without a selector; add an
   `entity_id` field where `target:` belongs; raise a plain English `HomeAssistantError`; or swallow an action
@@ -14,13 +14,18 @@ description: >-
 
 # Add or change a service action
 
+**Supported baseline:** This project supports Home Assistant 2026.8 and keeps `import voluptuous as vol` for schemas.
+Examples using `probatio` require Home Assistant 2026.9+; do not copy those imports or newer validators into code
+that must support 2026.8. Keep the existing `vol` schemas and validators until a minimum-version increase is approved.
+Do not add `probatio` as an integration requirement to work around the baseline.
+
 Terminology: Home Assistant renamed "services" to **actions** in the UI, but the Python API, the file name
 `services.yaml`, and the translation keys all still say `service`. Every text a user reads says "action" — never
 "service" or "service action"; `service` stays in code identifiers.
 
 **Read [`blueprint.service_actions.instructions.md`](../../instructions/blueprint.service_actions.instructions.md)
 and [`blueprint.services_yaml.instructions.md`](../../instructions/blueprint.services_yaml.instructions.md)
-first** — they hold the rules: where registration must happen, the probatio schema pattern, how to resolve the target
+first** — they hold the rules: where registration must happen, the baseline-compatible schema pattern, how to resolve the target
 entry or device, which exception type to raise, permissions, the `target:` field, response-data requirements
 (including the `.isoformat()` trap), entity service actions, and the `icons.json` shape. This skill is the order of operations and the design decisions.
 

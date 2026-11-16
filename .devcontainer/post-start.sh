@@ -27,6 +27,9 @@ print_info() {
 # shellcheck source=.devcontainer/_load_env.sh
 source "$(cd "$(dirname "$0")" && pwd)/_load_env.sh"
 
+# Restore tmpfs defaults, Node tools and optional HACS after a stop/start.
+bash .devcontainer/prepare-disposable.sh --restore
+
 # Run pre-hook if present
 _hook_file="$(cd "$(dirname "$0")" && pwd)/hooks/post-start.pre.sh"
 if [[ -f "$_hook_file" ]]; then

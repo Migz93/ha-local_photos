@@ -193,8 +193,9 @@ See [Integration Setup Failures](https://contributors.home-assistant.io/core/int
 
 ## Imports
 
-Ruff orders them. **Standard HA aliases:** `cv`, `dr`, `er`, `dt_util`. Schemas use a plain `import probatio`
-(`probatio.Schema`, `probatio.Required`, …), not `import voluptuous as vol` — see
+Ruff orders them. **Standard HA aliases:** `cv`, `dr`, `er`, `dt_util`. This project supports Home Assistant 2026.8,
+so schemas retain `import voluptuous as vol`. The plain `import probatio` examples (`probatio.Schema`,
+`probatio.Required`, …) require Home Assistant 2026.9+ and an approved minimum-version increase — see
 [`ha-modern-apis`](../skills/ha-modern-apis/references/deprecations.md#schema-validation--voluptuous-replaced-by-probatio).
 
 **A relative import may not reach into a parent package.** Ruff's `TID252` runs with the default
