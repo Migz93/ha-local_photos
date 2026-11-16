@@ -112,9 +112,8 @@ Use package name with version constraint:
 ```
 
 **Only list what Home Assistant does not already ship.** A custom integration must not repeat a package from Core's
-own `requirements.txt` for the supported version — `aiohttp`, `httpx`, `awesomeversion` and friends are already
-there, and pinning them from here can only conflict with Core. `probatio` is bundled starting with Home Assistant
-2026.9; this project still supports 2026.8 and must keep `voluptuous`, without adding a `probatio` requirement.
+own `requirements.txt` — `aiohttp`, `probatio`, `httpx`, `awesomeversion` and friends are already there, and
+pinning them from here can only conflict with Core.
 
 ## Validation
 

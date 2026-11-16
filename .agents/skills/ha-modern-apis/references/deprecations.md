@@ -1,8 +1,6 @@
 # Deprecated Home Assistant APIs and their replacements
 
-**Supported baseline: Home Assistant 2026.8.** This is a versioned upstream reference. Later-version examples and
-status labels describe their named releases, not APIs guaranteed on the project's supported baseline. Preserve
-2026.8 compatibility; a minimum-version increase requires approval. Check the installed version with:
+Verified against the Home Assistant version pinned in this devcontainer. Check with:
 
 ```bash
 .venv/bin/python -c "from homeassistant.const import __version__; print(__version__)"
@@ -16,23 +14,20 @@ rg -n "deprecated|breaks_in_ha_version" .venv/lib/python*/site-packages/homeassi
 
 The device registry has its own file: [`device-registry.md`](device-registry.md).
 
-**How to read the "Removed in" column.** Versions record upstream removal targets (`breaks_in_ha_version`).
-**gone** and **overdue** describe the upstream reference state, not a verified status on this project's 2026.8
-baseline. Check the installed source for availability and replacement signatures before changing code. **—** marks
-an unversioned recommendation. Logged deprecations need an explicit test fixture or a manual log check: [`ha-testing`](../../ha-testing/SKILL.md#two-settings-that-surprise-people).
+**How to read the "Removed in" column.** A version means the old form still works in the pinned version and logs a
+warning until then — `breaks_in_ha_version` from the source. **gone** means it no longer exists in the pinned version,
+so old code fails right away. **overdue** means the removal version has passed but the old form is still there; it can
+vanish in any release. **—** means not deprecated upstream, but wrong in this project. How tests catch the logged
+ones: [`ha-testing`](../../ha-testing/SKILL.md#two-settings-that-surprise-people).
 
 ## Schema validation — `voluptuous` replaced by `probatio`
 
-**Supported baseline:** This project supports Home Assistant 2026.8 and keeps `import voluptuous as vol` for schemas.
-Examples using `probatio` require Home Assistant 2026.9+; do not copy those imports or newer validators into code
-that must support 2026.8. Keep the existing `vol` schemas and validators until a minimum-version increase is approved.
-Do not add `probatio` as an integration requirement to work around the baseline.
-
-Since Home Assistant 2026.9, Core validates with `probatio`, a replacement with the shared schema API
-(`Schema`, `Required`, `Optional`, `All`, `Coerce`, `Range`, …). On that newer baseline, `async_show_form`,
-`add_suggested_values_to_schema` and service registration are typed against `probatio.Schema`; the old import can
-fail type checking. `probatio` ships with those newer Core versions and needs no `manifest.json` requirement.
-This does not apply to the supported 2026.8 baseline: keep its existing `import voluptuous as vol`.
+The core validates with `probatio`, a drop-in replacement with the same API
+(`Schema`, `Required`, `Optional`, `All`, `Coerce`, `Range`, …). `async_show_form`, `add_suggested_values_to_schema`
+and service registration are typed against `probatio.Schema`, so a `voluptuous` schema fails type checking.
+This blueprint writes `import probatio` and `probatio.Schema(...)`; `probatio` ships with Home Assistant and needs no
+`manifest.json` requirement. An existing `import voluptuous as vol` still works at runtime, because Home Assistant aliases
+the name to `probatio`, and only the type checker complains.
 
 ## Imports that moved
 
