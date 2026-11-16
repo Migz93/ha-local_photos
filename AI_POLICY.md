@@ -114,7 +114,7 @@ What it requires:
   place and answer them honestly.
 
 This project goes further than OHF does: **agents never open an issue, pull request, or comment on an OHF repository
-at all**, reviewed or not ([`AGENTS.md`](AGENTS.md)). Prepare the material locally and hand it to a human to submit.
+at all**, reviewed or not. Prepare the material locally and hand it to a human to submit.
 That is this project's rule, not OHF's wording of it.
 
 Home Assistant also runs AI review bots of its own. Their comments are not authoritative — maintainers decide.
