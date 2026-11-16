@@ -11,8 +11,7 @@ updates:
     commit-message:
       prefix: "chore(deps)"
     cooldown:
-      semver-patch-days: 3
-      semver-minor-days: 7
+      default-days: 7
     groups:
       # Bundle all minor/patch feature updates into a single PR; major updates stay separate
       devcontainer-features:
