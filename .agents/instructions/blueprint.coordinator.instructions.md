@@ -31,7 +31,7 @@ layering below is unchanged either way.
 ## API Client vs PyPI Library
 
 The criteria are in `AGENTS.md` § Custom Integration Flexibility. The choice is expensive to reverse: record it in
-`docs/development/DECISIONS.md` (see [`ha-planning`](../skills/ha-planning/SKILL.md)). Adding the dependency itself —
+a decision record in `docs/development/decisions/` (see [`blueprint-decisions`](../skills/blueprint-decisions/SKILL.md)). Adding the dependency itself —
 `manifest.json` **and** `requirements.txt`, kept in sync — is covered by
 [`blueprint-tooling`](../skills/blueprint-tooling/SKILL.md).
 
@@ -102,11 +102,10 @@ Translate API exceptions into Home Assistant ones here, and only here:
 | `RateLimitError`      | `UpdateFailed(retry_after=err.retry_after)` | Next poll waits that long   |
 | `CommunicationError`  | `UpdateFailed("message")`                   | Retry at the usual interval |
 
-Catch `RateLimitError` before the communication error it subclasses. During `async_config_entry_first_refresh()`
-Home Assistant honours `retry_after` only (HA 2026.11+); on the current minimum a rate limit at setup retries on the
-`ConfigEntryNotReady` backoff.
-Bound the wait before passing it on — at least a few seconds, at most the update interval — so `Retry-After: 0` does
-not poll in a loop and a huge value does not stop polling.
+Catch `RateLimitError` before the communication error it subclasses; Home Assistant honours `retry_after` during
+`async_config_entry_first_refresh()` too. A rate limit outside the coordinator during setup raises
+`ConfigEntryNotReady(retry_after=seconds)` instead. Bound the wait before passing it on — at least a few seconds, at
+most the update interval — so `Retry-After: 0` does not poll in a loop and a huge value does not stop polling.
 
 **Import from:** `homeassistant.exceptions.ConfigEntryAuthFailed`,
 `homeassistant.helpers.update_coordinator.UpdateFailed`
@@ -152,8 +151,7 @@ See [HA Data Update Patterns](https://contributors.home-assistant.io/core/integr
 **In `async_setup_entry()` in `__init__.py`:** Call `await coordinator.async_config_entry_first_refresh()`
 
 **Automatic handling:** If `_async_update_data()` raises `UpdateFailed`, coordinator raises `ConfigEntryNotReady`
-automatically; for what happens to `retry_after` there, see
-[Error Handling](#error-handling-in-_async_update_data).
+automatically.
 
 **When setup should not be retried at all**, use `await coordinator.async_refresh()` instead — it does not raise, so
 the entry loads with entities in an unavailable state rather than going into the retry loop.

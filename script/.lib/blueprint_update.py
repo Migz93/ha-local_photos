@@ -38,7 +38,7 @@ WATCHED = (
     ".github/workflows/*.yml",
     "docs/development/*.md",
 )
-NOT_WATCHED = ("docs/development/DECISIONS.md",)
+NOT_WATCHED = ("docs/development/decisions/*",)
 COORDINATOR_CLASS = r"^class (\w+?)DataUpdateCoordinator\b"
 
 Reader = Callable[[str], str | None]
@@ -141,7 +141,8 @@ def watched(paths: list[str]) -> list[str]:
     return sorted(
         path
         for path in set(paths)
-        if any(fnmatch.fnmatch(path, pattern) for pattern in WATCHED) and path not in NOT_WATCHED
+        if any(fnmatch.fnmatch(path, pattern) for pattern in WATCHED)
+        and not any(fnmatch.fnmatch(path, pattern) for pattern in NOT_WATCHED)
     )
 
 

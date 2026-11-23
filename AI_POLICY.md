@@ -51,6 +51,19 @@ Where complete manual review is impractical, stronger indirect safeguards become
 modules, type checking, linting, Home Assistant validation, automated tests for important behavior and regressions, and
 real-device testing where available. Automated checks reduce risk; they do not eliminate it.
 
+## A draft is cheap, a maintained integration is not
+
+AI makes a first working draft cheap. It does not make a good integration cheap. What separates the two is what a
+draft leaves out: quirks that only real devices show, error paths, reauthentication, tests that catch regressions,
+migrations that keep existing installations working, and years of answering issues. AI shifts the effort from typing
+to specifying, verifying and maintaining; it does not remove it. Some integrations only exist at this level of detail
+because AI made the time affordable.
+
+This holds for every integration, however it was built: the draft was never the hard part. How much effort stands
+behind a given integration is for its maintainer to say in the README, not for this policy to assert. If an
+integration saves you work, a good bug report, a test on your own hardware, a star or sponsorship are ways to give
+something back.
+
 ## Agents and publication
 
 Review expectations depend on what the agent produced. Generated code and other repository changes that can alter the
@@ -114,7 +127,7 @@ What it requires:
   place and answer them honestly.
 
 This project goes further than OHF does: **agents never open an issue, pull request, or comment on an OHF repository
-at all**, reviewed or not. Prepare the material locally and hand it to a human to submit.
+at all**, reviewed or not ([`AGENTS.md`](AGENTS.md)). Prepare the material locally and hand it to a human to submit.
 That is this project's rule, not OHF's wording of it.
 
 Home Assistant also runs AI review bots of its own. Their comments are not authoritative — maintainers decide.

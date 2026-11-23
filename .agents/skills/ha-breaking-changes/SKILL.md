@@ -2,14 +2,15 @@
 name: ha-breaking-changes
 description: >-
   Handle any change to this Home Assistant custom integration that could break existing installations — unique IDs
-  and entity IDs, config entry data, config options, service actions, state values, units, device classes, the
-  minimum Home Assistant version, or removing entities and devices. Use when asked to "rename", "restructure",
-  "clean up the unique IDs", "remove this option", "change the state format", or whenever a planned change would
-  invalidate an existing install. Covers the warn-first policy, unique ID and config entry migration, repair
-  issues, deprecation periods, how the bar differs before 1.0.0, and documenting the change. SYMPTOMS — load this
-  if you are about to: rename an `EntityDescription.key`, unique ID, or entity ID; remove a config option because
-  it looks unused; change a unit, device class, or state class; treat a prior approval as standing permission;
-  write a migration or bump `VERSION` before 1.0.0; or fold a breaking change into an unrelated commit.
+  and entity IDs, config entry data, config options, service actions, state values, units, device classes, or
+  removing entities and devices; and why raising the minimum Home Assistant version is not one. Use when asked to
+  "rename", "restructure", "clean up the unique IDs", "remove this option", "change the state format", or whenever a
+  planned change would invalidate an existing install. Covers the warn-first policy, unique ID and config entry
+  migration, repair issues, deprecation periods, how the bar differs before 1.0.0, and documenting the change.
+  SYMPTOMS — load this if you are about to: rename an `EntityDescription.key`, unique ID, or entity ID; remove a
+  config option because it looks unused; change a unit, device class, or state class; treat a prior approval as
+  standing permission; write a migration or bump `VERSION` before 1.0.0; or fold a breaking change into an unrelated
+  commit.
 ---
 
 # Breaking changes
@@ -33,7 +34,7 @@ Before 1.0.0:
   the choice to the developer: break cleanly now, or carry the migration.
 - **Recommend.** "The cleanest fix is to rename the key and let existing test entries be recreated; a migration would
   cost ~40 lines we would then maintain" is the useful form. Not "shall I migrate?"
-- **Do not record each one in `DECISIONS.md`.** That log is for architecture. A key renamed before the first stable
+- **Do not write a decision record for each one.** Those are for architecture. A key renamed before the first stable
   release is not an architectural decision, and a log padded with them is one nobody reads.
 - **Keep the `BREAKING CHANGE:` footer anyway.** It costs one line, and it is the whole price of this freedom: the
   Marketplace installs `0.x` versions too, and the people testing early deserve a changelog entry rather than a silent surprise.
@@ -47,17 +48,21 @@ After 1.0.0, everything below applies as written.
 
 ## 1. Recognise it
 
-Treat as breaking:
+A change is breaking when an existing installation stops working after the update, or its user has to change
+something — an automation, a dashboard, a setting. Treat as breaking:
 
 - Changing entity IDs, unique IDs, or `EntityDescription.key`.
 - Changing the structure of `entry.data` or `entry.options`.
 - Changing a state value, its unit, `device_class`, `state_class`, or an attribute name/format.
 - Renaming, removing, or changing the signature of a service action.
 - Removing or renaming a config option — including one you believe is unused.
-- Raising the minimum Home Assistant version — `hacs.json` → `homeassistant`; `manifest.json` has no such key. It
-  does not break a running install: the Marketplace withholds that release from anyone on an older Home Assistant,
-  and they silently stop receiving fixes until they upgrade ([`ha-marketplace`](../ha-marketplace/SKILL.md)).
 - Removing an entity, a platform, or a device.
+
+**Not breaking: raising the minimum Home Assistant version** (`hacs.json` → `homeassistant`; `manifest.json` has no
+such key). Nothing breaks on update — the Marketplace withholds the release from an older Home Assistant — but those
+users silently stop receiving fixes, so the changelog has to say so: commit it as a `feat` or `fix` whose subject
+names the new minimum, never as a hidden `chore` ([`ha-marketplace`](../ha-marketplace/SKILL.md)). A feature removed
+or a behaviour changed along with it is breaking on its own account.
 
 Long-term statistics deserve special care: changing `state_class`, the unit, or the entity ID discards or corrupts
 history that cannot be recovered. One case is recoverable — when only the **spelling** of a unit changes; see
@@ -91,7 +96,7 @@ Rewrite the registry entries inside `async_migrate_entry()` with `er.async_migra
 downgrade, whereas a newer major version makes it refuse the entry instead:
 
 ```python
-async def async_migrate_entry(hass: HomeAssistant, entry: {ClassPrefix}ConfigEntry) -> bool:
+async def async_migrate_entry(hass: HomeAssistant, entry: {ClassPrefix}ConfigEntry) -> None:
     """Migrate an old config entry."""
     if entry.version == 1:
         registry = er.async_get(hass)
@@ -109,7 +114,6 @@ async def async_migrate_entry(hass: HomeAssistant, entry: {ClassPrefix}ConfigEnt
 
         await er.async_migrate_entries(hass, entry.entry_id, _migrate)
         hass.config_entries.async_update_entry(entry, version=2, minor_version=1)
-    return True
 ```
 
 The entity ID follows the registry entry, so the user's automations keep working. A collision means the new entity
@@ -174,11 +178,15 @@ ir.async_create_issue(
   automations for renamed entities.
   ```
 
+- **When the user has to act, raise a repair issue** for the installations it concerns, in addition to the footer. The
+  update dialog shows release notes only within the last five releases, and many update without reading them; a
+  repair issue reaches whoever needs it, whatever version they came from
+  ([`blueprint.repairs`](../../instructions/blueprint.repairs.instructions.md)).
 - Update `docs/user/` and the README where the old behaviour is described. Text users read — docs, release notes,
   repair issues — says **backward-incompatible change**, Home Assistant's term; `BREAKING CHANGE:` stays the commit
   footer, because release-please keys on it.
-- Record the reasoning in `docs/development/DECISIONS.md` if it was an architectural call
-  ([`ha-planning`](../ha-planning/SKILL.md)).
+- Record the reasoning as a decision record in `docs/development/decisions/` if it was an architectural call
+  ([`blueprint-decisions`](../blueprint-decisions/SKILL.md)).
 
 ## 6. Removing entities and devices
 

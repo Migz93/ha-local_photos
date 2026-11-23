@@ -31,13 +31,12 @@ def __init__(
     ImageEntity.__init__(self, coordinator.hass)
 ```
 
-## Upcoming (HA 2026.11+)
+## Update and device tracker
 
-- `update`: override `has_update` when the device reports availability itself instead of comparable
-  versions; set `restart_required=True` (attribute or description) when the update needs a Home Assistant restart.
-  Until then, `version_is_newer()` is the only hook.
-- `ScannerEntity.device_info` is no longer final, and trackers are disabled by default. A tracker without
-  device info stops getting an automatic device in 2027.11.
+- `update`: override `has_update` when the device reports availability itself instead of comparable versions; set
+  `restart_required=True` (attribute or description) when the update needs a Home Assistant restart.
+- `ScannerEntity.device_info` can be overridden, and trackers are disabled by default. A tracker without device info
+  stops getting an automatic device in 2027.11.
 
 ## Infrared and radio frequency devices
 

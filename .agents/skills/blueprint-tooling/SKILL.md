@@ -65,21 +65,26 @@ concisely by design, so this only matters for `script/test`, the one command her
 ```bash
 script/develop           # take over Home Assistant on :8123, debugpy on :5678 (see below)
 script/ha                # query and control the running instance (see below)
+script/ha-env            # Home Assistant environments: list, add/remove latest, beta or a pinned custom, use one, refresh
 script/setup/seed-auth   # mint the token script/ha uses — run by script/develop
 script/hassfest          # official HA validation (first run downloads ~27 MB)
 script/test              # integration tests plus synchronized tooling tests
 script/skills-check      # validate .agents/skills/ and agent protected paths (also part of lint / lint-check)
 script/architecture-check # conservative architecture guardrails (also part of lint / lint-check) — see below
+script/push-gate         # git's pre-push hook: clean HEAD only, then lint-check + type-check in parallel
 script/version           # read the canonical version from manifest.json
+script/second-review     # a review by another agent CLI than this session's — see haci-change-review (--brief: its reviewer brief)
+script/build             # build the integration as it ships (--zip, --in-place); hook: build.post.sh
+script/decisions         # write (--check: verify) the decision record index (also part of lint / lint-check)
 script/ha-version-sync   # align the pinned Home Assistant version across config files, and mise's Python with it
-script/setup/toolchain   # install the tools mise.toml pins (--install-mise: mise itself too) — optional; not run by bootstrap
-script/setup/github      # apply the GitHub settings and .github/rulesets/ (--dry-run first) — see the upstream setup reference below
-script/secret-scan       # betterleaks over --staged changes (manual or optional hook), a --range, or --all of the history
+script/setup/toolchain   # install the tools mise.toml pins (--install-mise: mise itself too) — run by bootstrap
+script/setup/agent-plugins # install the haci plugins at the tag .claude/settings.json pins (--check: the 3 agents agree)
+script/setup/github      # apply the GitHub settings and .github/rulesets/ (--dry-run first) — see REPOSITORY_SETUP.md
+script/secret-scan       # betterleaks over --staged changes (the commit hook), a --range, or --all of the history
 script/clean             # remove caches, logs, build artifacts
+script/prune-blueprint   # list (--apply: remove) blueprint-only leftovers; ignore them and project-owned paths in .templatesyncignore
 script/help              # list every script with its description
 ```
-
-See the [upstream repository setup reference](https://github.com/jpawlowski/ha-integration-blueprint/blob/4ef441e44ced1400dcdbdd8967423f5c21db9f55/docs/development/REPOSITORY_SETUP.md) for the settings managed by `script/setup/github`.
 
 `script/develop` is a **takeover**, not a "start if needed" — the run-loop rules, and why, are in
 [`ha-coordinator-debug`](../ha-coordinator-debug/SKILL.md).
@@ -141,18 +146,19 @@ Assistant design constraint, not a repository quirk.
    same imports.
 3. `script/setup/bootstrap` (or a container rebuild) to install it.
 
-Pin versions in both, and keep them identical. Dependabot continues checking `requirements.txt`; verify the
-matching manifest pin when reviewing an update. Renovate can coordinate both files if the owner opts in.
+Pin versions in both, and keep them identical. Renovate raises the two files in one pull request; Dependabot skips
+`requirements.txt` on purpose, because it cannot see `manifest.json` and would split the pair. The commit type for such
+an update is `build`, which puts it into the changelog; Renovate uses it already.
 
 | File                     | Template sync  | Contents                                         |
 | ------------------------ | -------------- | ------------------------------------------------ |
 | `requirements.txt`       | ❌ excluded    | your integration's runtime dependencies          |
 | `requirements_dev.txt`   | ✅ synced      | shared development tooling — do not add app deps |
-| `requirements_test.txt`  | ❌ excluded    | repository-owned Home Assistant test baseline    |
+| `requirements_test.txt`  | ✅ synced      | shared test dependencies                         |
 | `requirements.local.txt` | — (gitignored) | your personal extras (`ipdb`, profilers, …)      |
 
 Before adding a dependency at all, decide whether you want it: the criteria are in `AGENTS.md` § Custom Integration
-Flexibility, and the choice belongs in `docs/development/DECISIONS.md` ([`ha-planning`](../ha-planning/SKILL.md)).
+Flexibility, and the choice belongs in a decision record ([`blueprint-decisions`](../blueprint-decisions/SKILL.md)).
 For a serial port that means `serialx`, not `pyserial-asyncio` — the replacement table is in
 [`ha-modern-apis`](../ha-modern-apis/references/deprecations.md).
 
@@ -169,22 +175,40 @@ and report what you could not verify rather than assuming it:
 
 ## Command-line tools and dependency updates
 
-The development container keeps its image-provided Python and command-line tools. Run project setup and checks
-inside that container, as described in `AGENTS.md`; setup does not install mise or tools on the host.
+`mise.toml` pins the tools the scripts run — Python, `uv`, the shell linters, `jq`, `yq`, `rg`, `fd`, `gron` — for
+every environment, and names the Home Assistant venv (`.venv`), so `mise env` — which every script and agent shell
+applies — puts that venv ahead of mise's own Python. A new tool goes there with an exact version, never `latest` and never into the dev container's apt
+list, which no cloud session or CI job sees. In an integration made from the blueprint, its own tools go into
+`.config/mise/conf.d/project.toml` instead: template sync overwrites `mise.toml` and never touches that file, and mise
+loads it everywhere `mise.toml` is loaded. A tool in both keeps the blueprint's version. A terminal tool only a person in the dev container uses goes into
+`mise.devcontainer.toml` instead, which mise loads there through `MISE_ENV=devcontainer`. apt keeps the system
+libraries Home Assistant's wheels build against and the few tools mise has no prebuilt binary for. Python follows Home Assistant: `script/ha-version-sync` fails when the
+pin no longer satisfies Home Assistant's `requires-python`. Node is not pinned there; every environment brings one.
 
-`mise.toml` provides the upstream tool pins used by CI. `script/setup/toolchain` is an optional, explicit way to
-install those pins inside a development environment. Project additions belong in `.config/mise/conf.d/project.toml`,
-which template sync leaves alone. Personal mise overrides belong in the ignored `mise.local.toml`.
-`script/ha-version-sync` checks the Python pin against the supported Home Assistant release.
+Two bots share the updates without overlapping — a dependency raised by both would arrive twice:
 
-Dependabot retains the repository's existing coverage, including `requirements.txt` and GitHub Actions. When a
-runtime package changes, review and update the matching `manifest.json` pin as well. Keep the Home Assistant test
-dependency on the release train declared in `hacs.json`; a new train is a separate compatibility decision.
+| What                                                                | Raised by                             | Pull request                                                                                                 |
+| ------------------------------------------------------------------- | ------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| GitHub Actions, npm, dev container features, `requirements_dev.txt` | Dependabot (`.github/dependabot.yml`) | weekly, minor/patch grouped per ecosystem                                                                    |
+| `mise.toml`, the mise version in workflows and the dev container    | Renovate (`.github/renovate.json`)    | weekly, one `tooling` group                                                                                  |
+| `manifest.json` + `requirements.txt`                                | Renovate                              | one per package, a major waits for approval; `fix(deps)` only for a security advisory                        |
+| `pytest-homeassistant`                                              | Renovate                              | its own; a new release train fails `script/ha-version-sync` until `hacs.json` follows                        |
+| the agent plugin tag in the three agent settings files              | Renovate                              | one `agent plugins` pull request for all three; `script/setup/agent-plugins --check` fails on a partial bump |
 
-`.github/renovate.json` is optional configuration. It needs the Renovate GitHub App and an owner decision to adopt it.
-Before enabling it, coordinate its coverage with Dependabot to avoid duplicate updates. Scanner updates retain
-manual merge approval. `mise run renovate-dry-run` can show proposed updates without opening pull requests.
-The optional `toolchain-update-check.yml` workflow reports outdated pins when Renovate is inactive.
+Renovate needs its GitHub App installed on the repository and does nothing without it: no error, no pull request.
+Dependabot has no mise ecosystem, so without the App the tool pins and the runtime requirements only move by hand;
+`toolchain-update-check.yml` then keeps one issue open listing the outdated pins, and stays quiet while Renovate is
+active.
+
+**A `googleapis/release-please-action` update needs one more step:** replace
+`script/tests/fixtures/release-please-pr-body.txt` with the body of a release PR the new version wrote. That test is
+what proves `script/release-notes --apply` still writes a body release-please can read back.
+`mise run renovate-dry-run` shows what Renovate would raise, without opening anything. The developer-facing version of
+this section is `docs/development/DEPENDENCY_UPDATES.md`.
+
+To drop Dependabot and let Renovate raise everything, delete `.github/dependabot.yml` and the first two package rules
+in `.github/renovate.json`; the grouping and the release-age settings for those ecosystems are already there. Keep
+Dependabot alerts on in the repository settings either way — Renovate reads them for its security pull requests.
 
 ## Extending the scripts with hooks
 
@@ -206,11 +230,13 @@ Two layers, both sourced by the lifecycle scripts:
 | `.devcontainer/.env`       | ✅ yes             | project defaults for everyone  |
 | `.devcontainer/.env.local` | ❌ no (gitignored) | personal overrides, always win |
 
-| Variable          | Default                  | Effect                                                                               |
-| ----------------- | ------------------------ | ------------------------------------------------------------------------------------ |
-| `HA_VERSION`      | version from `hacs.json` | `latest`, `beta`, `YEAR.MONTH`, or an exact version                                  |
-| `HA_INSTALL_HACS` | `1`                      | `0` skips the HACS install; ignored from 2026.11, which has the Marketplace built in |
-| `APT_UPDATE`      | `0`                      | `1` runs `apt-get update && upgrade` during setup                                    |
+| Variable                | Default   | Effect                                                                                                                                                                     |
+| ----------------------- | --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `HA_VERSION`            | `minimum` | `latest` or `beta`: the environment bootstrap builds and activates instead; one particular release only by hand, `script/ha-env add custom <version>`                      |
+| `HA_ENVS`               | `minimum` | environments bootstrap installs, e.g. `minimum latest beta` — [testing a newer release](../../../docs/development/CUSTOMIZATION.md#testing-against-a-newer-home-assistant) |
+| `HA_INSTALL_HACS`       | `1`       | `0` skips the HACS install; ignored from 2026.11, which has the Marketplace built in                                                                                       |
+| `APT_UPDATE`            | `0`       | `1` runs `apt-get update && upgrade` during setup                                                                                                                          |
+| `INSTALL_AGENT_PLUGINS` | `1`       | `0` stops bootstrap installing the agent plugins the repository enables; the check that the agents' settings agree still runs                                              |
 
 Changes require **Dev Containers: Rebuild Container**. These files are not visible to devcontainer _features_ or
 `containerEnv` — those are set at image build time and must be edited in `devcontainer.json`.
@@ -240,6 +266,8 @@ Review before merging.
   `script/template-sync-guard` restores it on the sync branch and comments what it kept. That step lives in
   `template-sync.yml`, which the sync never updates, so a repository created before it existed copies the step over
   by hand. A sync PR that lowers a version anyway was produced without the step.
+- Blueprint-only files the sync brings are removed on the sync branch by `script/prune-blueprint --apply`, in the last
+  step of `template-sync.yml`, and listed in `.templatesyncignore` — the same copy-by-hand caveat applies.
 - Changes the sync cannot deliver — to excluded files such as `AGENTS.md`, or steps a repository has to take itself —
   are carried over with [`blueprint-update`](../blueprint-update/SKILL.md) and `script/blueprint-update`.
 

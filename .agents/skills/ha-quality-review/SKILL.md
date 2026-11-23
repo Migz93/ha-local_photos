@@ -3,9 +3,9 @@ name: ha-quality-review
 description: >-
   Perform a structured quality review of this Home Assistant custom integration, either as a full audit or scoped
   to a diff. Use when asked to "review the integration", "audit the code", "check quality scale", "are we
-  bronze/silver/gold", "is this ready to release", "review my changes", "what's missing before publishing", or
-  before opening a pull request that touches integration code. Covers running the automated gates first, then
-  auditing architecture, the Integration Quality Scale rules, error handling, security, performance, user
+  bronze/silver/gold", "is this ready to release", "what's missing before publishing", or before a release. The
+  review of a change before it lands is haci-change-review, from the haci-review plugin. Covers running the automated gates
+  first, then auditing architecture, the Integration Quality Scale rules, error handling, security, performance, user
   experience, and documentation — and reporting findings ranked by severity with concrete fixes. SYMPTOMS — load
   this if you are about to: report a review that only restates linter output; claim real-device testing that did
   not happen; give a finding without a file path and a fix; or judge quality without running `script/hassfest` and
@@ -151,6 +151,13 @@ Check each; the rule and how to comply live in the linked file.
 - Entity names read well in the UI with `has_entity_name` (no repeated device name).
 - Units, device classes, and state classes are set so history and statistics work.
 - Failures surface as repair issues or reauth flows rather than silent unavailability.
+- Every enum state, selector option and attribute name has a translation; no raw key reaches the UI.
+- Every option's `data_description` says what it changes; a long options flow has a menu rather than a chain of
+  steps.
+- What users would trigger on is a state, not only an attribute; action response data has a stable, documented
+  shape; device and library failures in actions are raised as `HomeAssistantError`.
+- Whichever of the [`ha-user-experience`](../ha-user-experience/SKILL.md) options the integration took, they are
+  applied consistently — a finding is an inconsistency, not a missing option.
 - For an integration that depends on a remote endpoint, consider `system_health.py`: a `@callback async_register`
   that calls `register.async_register_info(...)`, whose info callback returns a dict whose values may be coroutines
   (the frontend shows a spinner and resolves them). `system_health.async_check_can_reach_url(hass, ENDPOINT)` covers
@@ -165,9 +172,12 @@ Check each; the rule and how to comply live in the linked file.
 - `manifest.json`: correct `integration_type`, `iot_class`, `documentation`, `issue_tracker`, `codeowners`, `version`.
 - Publishing readiness, when it is meant to be listed — repository preconditions, brand images, the CI gates the
   catalog requires: [`ha-marketplace`](../ha-marketplace/SKILL.md) has the checklist.
-- Architectural choices worth remembering are in `docs/development/DECISIONS.md`
-  ([`ha-planning`](../ha-planning/SKILL.md)).
+- Architectural choices worth remembering are decision records in `docs/development/decisions/`
+  ([`blueprint-decisions`](../blueprint-decisions/SKILL.md)).
 - Breaking changes carry a migration path ([`ha-breaking-changes`](../ha-breaking-changes/SKILL.md)).
+- The project's own skills and instructions files are still worth their context: no rule a check now enforces, none
+  the code no longer has, no two files on one topic
+  ([`blueprint-lessons`](../blueprint-lessons/SKILL.md) §5).
 
 ## Report format
 

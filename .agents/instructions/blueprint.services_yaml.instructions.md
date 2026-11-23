@@ -81,9 +81,8 @@ nest the data: a field inside a section still arrives as `{"speed_pct": 50}`, no
 
 Under `target.entity.supported_features`, a nested list means AND — both features must be present.
 
-**`target:` never takes a `device:` filter** — only `entity:`. Hassfest fails on it, and Home Assistant rejects such a
-target selector at load (HA 2026.11+). An action that needs a device of this integration uses a `device_id` field with a
-`device:` selector filtered to `integration: <domain>`.
+**`target:` never takes a `device:` filter** — only `entity:`. Hassfest fails on it. An action that needs a device of
+this integration uses a `device_id` field with a `device:` selector filtered to `integration: <domain>`.
 
 ## Selectors
 

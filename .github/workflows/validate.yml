@@ -18,9 +18,42 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Hassfest and HACS are required checks, so they cannot be filtered with `on.paths`: a workflow that never starts
+  # reports no status and blocks the merge. A job skipped by `if` counts as passed.
+  changes:
+    name: Detect relevant changes
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
+    runs-on: ubuntu-26.04
+    timeout-minutes: 5
+    permissions:
+      contents: read # check out the repository
+    outputs:
+      relevant: ${{ steps.scope.outputs.relevant }}
+    steps:
+      - name: Checkout the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 2
+
+      # A pull request is checked out as a merge commit, so its first parent is the base it is compared with.
+      - name: Check whether the integration or its metadata changed
+        id: scope
+        env:
+          EVENT: ${{ github.event_name }}
+        run: |
+          echo "relevant=true" >> "${GITHUB_OUTPUT}"
+          [[ "${EVENT}" == "pull_request" ]] || exit 0
+          changed=$(git diff --name-only HEAD^1 HEAD) || exit 0
+          grep -qE '^custom_components/|^(README|info)\.md$|^hacs\.json$|^script/\.lib/ha_version\.sh$|^\.github/workflows/validate\.yml$' \
+            <<<"${changed}" && exit 0
+          echo "Neither the integration nor its metadata changed — Hassfest and HACS skipped" >> "${GITHUB_STEP_SUMMARY}"
+          echo "relevant=false" >> "${GITHUB_OUTPUT}"
+
   hassfest: # https://contributors.home-assistant.io/blog/2020/04/16/hassfest/
     name: Hassfest validation
-    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
+    needs: changes
+    if: needs.changes.outputs.relevant == 'true'
     runs-on: ubuntu-26.04
     permissions:
       contents: read # check out the repository
@@ -50,11 +83,12 @@ jobs:
           persist-credentials: false
 
       - name: Run hassfest validation
-        uses: home-assistant/actions/hassfest@86d4564712fa02543c808e3a693dd04f9d3f8361 # master
+        uses: home-assistant/actions/hassfest@86d4564712fa02543c808e3a693dd04f9d3f8361 # master # zizmor: ignore[ref-version-mismatch,stale-action-refs]
 
   hacs: # https://github.com/hacs/action
     name: HACS validation
-    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
+    needs: changes
+    if: needs.changes.outputs.relevant == 'true'
     runs-on: ubuntu-26.04
     permissions:
       contents: read # check out the repository

@@ -8,11 +8,19 @@ on:
   push:
     branches:
       - main
+    paths:
+      - "**.py"
+      - .github/workflows/**
+      - .github/actions/**
   pull_request:
     branches:
       - main
     # A draft spends no minutes; marking it ready for review runs everything.
     types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - "**.py"
+      - .github/workflows/**
+      - .github/actions/**
   schedule:
     - cron: "30 3 * * 1"
   workflow_dispatch:
@@ -44,13 +52,15 @@ jobs:
         with:
           persist-credentials: false
 
+      # Every language runs on every pull request: one without an upload has nothing to compare with main, and code
+      # scanning then warns that a configuration of the base branch was not found.
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
+        uses: github/codeql-action/init@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
         with:
           languages: ${{ matrix.language }}
           build-mode: none
 
       - name: Analyze
-        uses: github/codeql-action/analyze@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
+        uses: github/codeql-action/analyze@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
         with:
           category: /language:${{ matrix.language }}

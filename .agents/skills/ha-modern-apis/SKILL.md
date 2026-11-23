@@ -97,9 +97,7 @@ type {ClassPrefix}ConfigEntry = ConfigEntry[{ClassPrefix}Data]
 entry.runtime_data = {ClassPrefix}Data(client=client, coordinator=coordinator, integration=integration)
 ```
 
-**3. Logged Home Assistant deprecations need an explicit check.** Python `warnings` filters do not catch them.
-Tests catch them only if the suite implements a suitable `caplog` check; inspect `tests/conftest.py` rather than
-assuming a fixture exists. Otherwise check the runtime logs directly — see
+**3. Tests catch Home Assistant's deprecations through a fixture, not through `warnings`** — see
 [`ha-testing`](../ha-testing/SKILL.md#two-settings-that-surprise-people). Fix the deprecation; never filter it.
 
 ## Fixing a deprecation warning
@@ -131,7 +129,8 @@ When `script/test` reports that the manifest schema's categories differ from the
 
 Raising the minimum version is a separate decision:
 [`ha-marketplace`](../ha-marketplace/SKILL.md#2-hacsjson--when-to-touch-it) for where it lives,
-[`ha-breaking-changes`](../ha-breaking-changes/SKILL.md) for why it is breaking.
+[`ha-breaking-changes`](../ha-breaking-changes/SKILL.md#1-recognise-it) for why it is not breaking and how to
+announce it.
 
 ## Do not
 

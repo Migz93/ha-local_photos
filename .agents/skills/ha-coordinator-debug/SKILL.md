@@ -72,6 +72,11 @@ script/ha status    # exit 0 up, exit 2 down; `started` and `uptime` reveal a re
 - **Announce it before you take exclusive control**, so the developer knows to keep their hands off meanwhile. That
   covers `script/setup/reset`, `script/ha token --rotate` and `--revoke`, and any loop that restarts repeatedly — all
   of them need Home Assistant stopped or undisturbed.
+- **The Home Assistant environment is the developer's choice, never yours.** `script/ha-env use`,
+  `script/ha-env refresh` and `script/develop --env` move every terminal, `script/test` and the instance to another
+  version at once. Switch only when asked; `script/ha-env list` and `script/ha status` show what is active and who
+  started the running instance. Never pass `--force` to `script/ha-env use` or `script/develop` without asking, and name the
+  environment that is active when you finish.
 - **`ha call`, `ha flow`, `ha reload` and `ha loglevel` change what the developer sees.** Cheap and reversible, but a
   config entry created by a flow stays until someone removes it.
 - **State the run state when you finish — after checking it**, never from memory.
@@ -82,7 +87,9 @@ There are two sources of truth for runtime state, and which one is correct depen
 running. Getting this backwards is the most common way to debug a ghost.
 
 **While Home Assistant runs, the API is authoritative and the files under `config/.storage/` are stale by design** —
-they are `Store.async_delay_save` files, written some time after the change they describe:
+they are `Store.async_delay_save` files, written some time after the change they describe. Everything here about
+`config/` applies to `.local/ha-config/<name>/` while another environment is active; `script/ha status` names the
+directory as `config_dir`.
 
 | What                              | Written                                            |
 | --------------------------------- | -------------------------------------------------- |
@@ -153,7 +160,7 @@ Two debug modes catch what no log level shows: Home Assistant's own, and asyncio
 API from the wrong thread and blocking the event loop are reported the moment they happen, instead of surfacing later
 as an unexplained hang or a state that quietly went wrong.
 
-A `debug_console:` line in `config/configuration.yaml` (HA 2026.11+) adds a Python console under **Settings** >
+A `debug_console:` line in `config/configuration.yaml` adds a Python console under **Settings** >
 **Tools**, with `hass` in scope — quicker than a log line and a restart for inspecting live objects. It runs in the event
 loop, so never call anything blocking there.
 

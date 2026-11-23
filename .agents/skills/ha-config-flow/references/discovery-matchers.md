@@ -60,7 +60,7 @@ the config flow's job, not the matcher's — always `async_set_unique_id()` and 
   the HomeKit zeroconf type.
 - **MQTT** needs `mqtt` in `dependencies`, and `await mqtt.async_wait_for_mqtt_client(hass)` before subscribing.
 
-## LoRaWAN (HA 2026.11+)
+## LoRaWAN
 
 ```json
 "dependencies": ["lorawan"],

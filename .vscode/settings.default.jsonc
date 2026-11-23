@@ -22,8 +22,9 @@
   "python.analysis.diagnosticMode": "workspace",
   "python.defaultInterpreterPath": "/home/vscode/ha-venv/bin/python",
   "python.linting.pylintEnabled": false,
-  "python.terminal.activateEnvironment": true,
-  "python.terminal.activateEnvInCurrentTerminal": true,
+  // .devcontainer/.bashrc and .zshrc activate the venv in every terminal, before this extension could.
+  "python.terminal.activateEnvironment": false,
+  "python.terminal.activateEnvInCurrentTerminal": false,
   // .devcontainer/.env uses Bash syntax (sourced by setup scripts) — not a Python dotenv file.
   // Disable VS Code's env file injection to avoid parse errors and unexpected variable leakage.
   // Also clear python.envFile to avoid Python extension warnings about a configured env file.
@@ -55,6 +56,8 @@
     ".agents/hooks/**": false,
     ".claude/settings.json": false,
     ".codex/hooks.json": false,
+    ".codex/config.toml": false,
+    ".github/copilot/settings.json": false,
     ".opencode/**": false,
     "opencode.json": false,
     "opencode.jsonc": false,

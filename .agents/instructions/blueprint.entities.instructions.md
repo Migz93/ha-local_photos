@@ -87,15 +87,23 @@ migration ([`ha-breaking-changes`](../skills/ha-breaking-changes/SKILL.md)).
   - The entity that **is** the device's main feature (the light of a bulb, the fan of a purifier) sets `name=None`
     on its description, or `_attr_name = None` on the class. `friendly_name` then becomes the device name alone and
     the entity id is `<platform>.<device_name>` — without it the UI reads "Air Purifier Air Purifier".
+- **`friendly_name` is legacy output, not an input.** Home Assistant computes it for compatibility
+  (`async_get_legacy_friendly_name` in `helpers/entity_registry.py`); the frontend names entities from the registry —
+  entity name, device, area (`formatEntityName`, 2026.4). Never set it, read it, or put the device or area name into
+  an entity name — the frontend adds that context itself.
 - Platform-specific: `device_class`, `state_class`, `native_unit_of_measurement`, `options`, etc.
 - **Set `device_class` whenever one fits** - drives unit conversion, icons and voice assistants.
-- **Set `state_class` on every numeric measurement** - without it there are no long-term statistics. The allowed
+- **Set `state_class` on every numeric measurement or total** - without it there are no long-term statistics. A
+  forecast, a value for a future time or a snapshot takes none. The allowed
   state classes and units per device class are `DEVICE_CLASS_STATE_CLASSES` and `DEVICE_CLASS_UNITS` in the installed
   `sensor/const.py` — meters never take `MEASUREMENT`, and some device classes take no state class at all. See
   [`sensors.md`](../skills/ha-entity-platform/references/sensors.md).
 - A unit that is a word ("steps") is a translated unit, not a `native_unit_of_measurement` — see
   [`ha-translations`](../skills/ha-translations/SKILL.md).
-- **NEVER set `icon=`** - icons belong in `icons.json` (quality scale `icon-translations`).
+- **NEVER set `icon=`** - icons belong in `icons.json` (quality scale `icon-translations`), including icons that
+  follow the entity's own state (`state`, `range`). The one exception is an `icon` property whose icon depends on
+  more than that state — the time, another value, a combination. It overrides `icons.json` and is written into
+  every stored state.
 
 **Value extraction:** Subclass the description dataclass with a `value_fn` rather than branching on `key` in the entity:
 
@@ -107,12 +115,21 @@ class {ClassPrefix}SensorEntityDescription(SensorEntityDescription):
     value_fn: Callable[[dict[str, Any]], StateType]
 ```
 
-**Entity Categories:**
+### Entity Categories
 
-- `None` - Primary functionality (prominent display)
-- `EntityCategory.DIAGNOSTIC` - Diagnostic info (uptime, signal, errors), and an identify button
-- `EntityCategory.CONFIG` - An entity that changes a device setting. `sensor` and `binary_sensor` **cannot** use it —
-  adding one raises. `update` defaults to `CONFIG` without being told.
+- `None` - What someone has the device or service for: its readings, its controls, the data it exists to deliver
+- `EntityCategory.DIAGNOSTIC` - Information about the device or the integration itself, not about what it measures:
+  signal strength, uptime, firmware, IP address, battery, last successful update, API or connection status, data
+  age. Also an identify button.
+- `EntityCategory.CONFIG` - An entity that changes a device setting, or an integration setting automations need to
+  change — then disabled by default, and the options flow shows which fields it currently controls. `sensor` and
+  `binary_sensor` **cannot** use it — adding one raises. `update` defaults to `CONFIG` without being told.
+
+The test is what the value is **about**, not how often it is wanted: a secondary reading of the thing the device
+measures stays primary — disabled by default if few need it — and is never made diagnostic to hide it. A category
+leaves the entity out of auto-generated dashboards, out of voice assistants by default, and out of actions that
+target a whole device or area (`primary_entities_only` in `helpers/target.py`); its state, history and triggers are
+unaffected. Category and enabled-by-default are independent choices.
 
 ## Platform Setup
 
@@ -150,11 +167,19 @@ Long text belongs in an attribute or a different kind of entity.
 
 ## Custom State Attributes
 
-**Prefer a second entity.** Every attribute is written to the recorder database on every state change, so a frequently
-changing attribute on a frequently changing entity multiplies database growth. A value worth showing is usually worth
-its own sensor.
+**Entity or attribute — decide in this order:**
 
-**If attributes are still right:** use the `extra_state_attributes` property returning a dict, and exclude the volatile
+1. The value changes on its own, needs history or statistics, the energy dashboard, or is something users trigger
+   on → **its own entity**.
+2. It explains or uses the current state — when a period starts and ends, the source of a reading, a list a card
+   draws that no 255-character state can hold → **an attribute**.
+3. It is large, static, or changes on every update without meaning → an attribute in `_unrecorded_attributes`, or
+   nothing.
+
+Every attribute is written to the recorder on every state change unless it is excluded, so a frequently changing
+attribute on a frequently changing entity multiplies database growth.
+
+**Implementation:** use the `extra_state_attributes` property returning a dict, and exclude the volatile
 ones from history with a **class-level** `_unrecorded_attributes: frozenset[str]` (instance attributes are ignored).
 `MATCH_ALL` excludes everything except `device_class`, `state_class`, `unit_of_measurement` and `friendly_name`.
 
@@ -162,6 +187,24 @@ ones from history with a **class-level** `_unrecorded_attributes: frozenset[str]
   no value; one it does not support is absent. Never drop a key because this poll lacked it.
 - Static facts — firmware, serial number, model — belong in the device info, not in an attribute.
 - The recorder drops **all** attributes of a state, with a warning, once together they exceed 16 KiB.
+
+**Shape and names** — the reasoning and the naming scheme are in
+[`ha-user-experience`](../skills/ha-user-experience/SKILL.md#3-attributes):
+
+- **Flat for what people read.** A value someone should see is a top-level attribute with a plain value. A dict or a
+  list of objects is shown as raw YAML: keep those for bulk data machines read, in `_unrecorded_attributes`.
+- **Every attribute has a display name**, `entity.<platform>.<translation_key>.state_attributes.<attr>.name`, so the
+  entity needs a `translation_key` — also a main-feature entity with `name=None`, and one its device class would
+  otherwise name. Without it the dialog shows the de-underscored English key in every language.
+- **The key is stable and a translation key**: renaming it breaks automations, and hassfest allows only `[a-z0-9_-]`,
+  so a unit is spelled out (`remaining_minutes`, `diff_from_daily_max_percent`) and the symbol goes into the display
+  name ("Difference from daily maximum (%)").
+- **A time attribute only when the state's own timestamps do not answer the question.** `last_changed`,
+  `last_updated` and `last_reported` say when Home Assistant wrote the state, never what the value refers to. Add one
+  for a value about another time than now (`interval_start`, `applies_to_date`), or one the source measured noticeably
+  earlier (`measured_at`). Data age for the whole integration is one diagnostic `TIMESTAMP` sensor. Never a per-poll
+  "fetched at": it duplicates `last_reported` and writes a state change each time. Name it for what it means, not
+  `timestamp`.
 
 **NEVER override `state_attributes` or `capability_attributes`** - reserved for base platform components (brightness,
 color, etc.)

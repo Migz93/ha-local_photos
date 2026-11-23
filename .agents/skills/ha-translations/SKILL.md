@@ -7,7 +7,8 @@ description: >-
   "translate", "fix the entity name", "add strings for the new sensor/action/option", "add icons", or when
   hassfest reports a missing or unused translation key. Covers the key structure, which keys each feature needs,
   placeholders, the icons.json contract, and the project's strict rule about only touching en.json. SYMPTOMS —
-  load this if you are about to: write user-facing English into Python; edit a language file other than `en.json`;
+  load this if you are about to: write user-facing English into Python; use display text as a state or option
+  value; edit a language file other than `en.json`;
   add an entity without its `entity.<platform>.<key>.name` key; skip `data_description` on a config flow field; or
   set `icon=` instead of using `icons.json`.
 ---
@@ -29,6 +30,8 @@ This skill is which keys a given change needs, and how to write them.
   contributed through the project's translation workflow, and machine-translating them creates churn no maintainer
   asked for.
 - If the developer explicitly asks for another language, confirm which files before starting.
+- Whether the integration should ship more languages is the developer's product decision, not this rule's —
+  [`ha-user-experience`](../ha-user-experience/SKILL.md#9-languages).
 - During feature work, business logic comes first. Use the translation key in code immediately, and fill in `en.json`
   either when asked or when the feature is complete.
 
@@ -69,7 +72,7 @@ This skill is which keys a given change needs, and how to write them.
 | ---------------------------------- | ----------------------------------------------------------------------------------------------- |
 | An entity with a `translation_key` | `entity.<platform>.<translation_key>.name`                                                      |
 | An enum sensor or a `select`       | …plus `entity.<platform>.<key>.state.<value>` for **every** possible value                      |
-| An entity attribute                | `entity.<platform>.<key>.state_attributes.<attr>.name` (and `.state` for enum attributes)       |
+| Every entity attribute             | `entity.<platform>.<key>.state_attributes.<attr>.name` (and `.state` for enum attributes)       |
 | A config flow field                | `config.step.<step>.data.<field>` **and** `config.step.<step>.data_description.<field>`         |
 | A new `errors["base"] = "x"`       | `config.error.x`                                                                                |
 | A new `async_abort(reason="x")`    | `config.abort.x`                                                                                |
@@ -143,8 +146,8 @@ raise HomeAssistantError(
 - Match the wording Home Assistant uses for the same situation rather than inventing a variant —
   [Core's shared strings](../../instructions/blueprint.translations.instructions.md#cores-shared-strings).
 - Use the word the project already settled on. If `docs/development/GLOSSARY.md` exists it decides the wording here,
-  because renaming an entity later is a breaking change ([`ha-grill`](../ha-grill/SKILL.md) is where those terms are
-  agreed).
+  because renaming an entity later is a breaking change (`haci-grill`, where the plugin is on, is
+  where those terms are agreed).
 
 ## icons.json
 
@@ -161,6 +164,8 @@ Beyond a plain icon, a key can carry:
   If a key defines both `state` and `range`, **`state` wins**.
 - `state_attributes` — icons per attribute value, for things like a climate preset or a fan mode. Only attributes,
   not arbitrary keys.
+
+Where code may set an icon instead is in [`blueprint.entities`](../../instructions/blueprint.entities.instructions.md).
 
 ```json
 {

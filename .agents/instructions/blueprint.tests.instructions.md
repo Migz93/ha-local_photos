@@ -47,11 +47,8 @@ tests/
 
 ## Fixtures
 
-**Suggested shared-fixture contracts** — inspect `tests/conftest.py` first, if it exists. The names below describe
-examples, not fixtures guaranteed to be present in this repository. Reuse existing fixtures; define missing ones
-only when test work is explicitly requested, following the bootstrap guidance in `ha-testing`:
+**Defined in `tests/conftest.py`** — use these names, never a per-file variant:
 
-- `auto_enable_custom_integrations` - autouse wrapper around `enable_custom_integrations`
 - `config_entry` - `MockConfigEntry`, not yet added to `hass`
 - `mock_api` - the mocked data source, patched where the integration imports it
 - `init_integration` - `config_entry` set up with `mock_api` active, returned loaded
@@ -59,8 +56,9 @@ only when test work is explicitly requested, following the bootstrap guidance in
 **No `coordinator` fixture.** A test that builds or patches the coordinator couples itself to its constructor and
 internals; mock the client and let setup build the coordinator, then assert through `hass.states`.
 
-**From `pytest-homeassistant-custom-component`** — never redefine: `hass`, `hass_client` (authenticated HTTP client,
-needed for diagnostics), `entity_registry`, `device_registry`, `issue_registry`, `snapshot`, `caplog`. `freezer` comes
+**From `pytest-homeassistant`** — never redefine: `hass` (loads custom integrations without a wrapper fixture),
+`hass_client` (authenticated HTTP client, needed for diagnostics), `entity_registry`, `device_registry`,
+`issue_registry`, `entity_registry_enabled_by_default`, `snapshot`, `caplog`. `freezer` comes
 from `pytest-freezer`; advance it with `freezer.tick()` plus `async_fire_time_changed`, never `time.sleep`.
 
 **Use [Syrupy](https://github.com/syrupy-project/syrupy) for large outputs:**
@@ -81,8 +79,8 @@ from `pytest-freezer`; advance it with `freezer.tick()` plus `async_fire_time_ch
 - No `if` in a test body — split the test, or parametrize with `pytest.param(..., id="...")` so a failure names its
   case
 - No network — sockets are blocked except to `127.0.0.1`; a test that needs one is missing a mock
-- Recorded payloads go in a `fixtures/` folder beside the test, loaded with `load_fixture(name)` — never with `DOMAIN`
-  as the second argument, which points at Core's tree
+- Recorded payloads go in `tests/fixtures/`, loaded with `load_fixture(name)` from a test file at any depth — never
+  with a second argument, which points at Core's tree
 
 ## Core Interface Testing
 
@@ -144,6 +142,7 @@ script/test --cov-html         # Coverage report (htmlcov/index.html)
 script/test tests/sensor/      # Specific directory
 script/test -k test_sensor     # Pattern matching
 script/test -m unit            # Marker filtering
+script/test --picked           # Only the test files changed in the working tree
 script/test --snapshot-update  # Update snapshots
 script/test -x                 # Stop at the first failure — the one to use while iterating
 script/test --cov-report term-missing   # Coverage with the uncovered lines listed in the terminal

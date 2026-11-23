@@ -22,6 +22,12 @@ defaults and would otherwise surprise you: **MD013 off** (no line-length limit),
 - Relative links for anything inside the repository, absolute URLs for everything else.
 - `✅` / `❌` / `⚠️` are the project's markers for do / don't / warning. Use them or plain prose, not a third scheme.
 
+## README and the Marketplace
+
+The Marketplace shows `README.md` without what lies between `<!-- ha-marketplace:exclude-start -->` and
+`<!-- ha-marketplace:exclude-end -->`. Every start has its end (`tests/test_readme_markers.py`), and visible text never
+refers to excluded text. What goes where: [`ha-marketplace`](../skills/ha-marketplace/SKILL.md#6-the-readme-is-read-in-two-places).
+
 ## Structure
 
 - `docs/development/` — developer documentation (architecture, decisions)

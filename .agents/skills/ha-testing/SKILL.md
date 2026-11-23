@@ -2,12 +2,12 @@
 name: ha-testing
 description: >-
   Write, fix, or extend automated tests for this Home Assistant custom integration using pytest and
-  pytest-homeassistant-custom-component. Use when asked to "add tests", "write a test", "the tests fail", "improve
+  pytest-homeassistant. Use when asked to "add tests", "write a test", "the tests fail", "improve
   coverage", "add a regression test", "test the config flow", "update snapshots", or when a behavioural change
   needs verification before it can be called done. Covers the tests/ layout, the conftest.py fixtures this project
   needs, mocking the API client, config flow and entity test patterns, registry assertions, syrupy snapshots,
   freezing time, and the script/test commands. SYMPTOMS — load this if you are about to: instantiate an entity
-  class directly instead of asserting on `hass.states`; write a test without `enable_custom_integrations`; use
+  class directly instead of asserting on `hass.states`; redefine a fixture `pytest-homeassistant` provides; use
   `time.sleep` instead of `async_fire_time_changed`; silence a DeprecationWarning to make the suite pass; or
   commit a snapshot you have not read.
 ---
@@ -24,48 +24,27 @@ scaffolding and the judgement calls.
 
 ## When a test is required
 
-Repository instructions decide when tests may be created or changed. These recommendations apply only to explicitly
-requested test work.
-
 - Behavioural change, bug fix, or regression → add a proportionate test.
+- **The test sits at the seam where the bug occurred** — the coordinator for a parsing bug, `hass.states` for an entity
+  bug. A test at a shallower layer passes while the bug lives on; if no seam can reproduce it, say so as a finding.
+  An existing test that missed the bug sits at the wrong seam — move it rather than add a second. Name the test after
+  the behaviour, not the issue number.
 - **A bug fix starts with a failing test.** Write it, watch it fail for the reported reason, then fix — a test written
   after the fix may never have been able to fail.
 - Documentation-only, formatting-only, or anything that cannot affect runtime → no test needed.
 - If a test is impractical (needs real hardware, non-deterministic timing), say so explicitly and describe the residual
   risk. Do not silently skip it, and never claim coverage that does not exist.
 
-## Shared-fixture contracts and bootstrap: `tests/conftest.py`
+## The shared fixtures: `tests/conftest.py`
 
-Inspect `tests/conftest.py` first, if it exists. These are suggested contracts for the examples below, not a list of
-fixtures already implemented in this repository. Reuse existing fixtures; when test work is explicitly requested,
-define any missing fixture once in `conftest.py` before a test requests it. Adapt the entry data, client patch and
-setup to the actual integration rather than copying placeholder imports or credentials.
+Use these by name instead of defining a variant per file — every existing test depends on them:
 
-Custom integrations are not enabled by default. If no equivalent wrapper already exists, this is the minimal
-bootstrap for an authorized integration-test suite:
-
-```python
-import pytest
-
-
-@pytest.fixture(autouse=True)
-def auto_enable_custom_integrations(enable_custom_integrations: None) -> None:
-    """Enable custom integrations in tests."""
-```
-
-The other example fixtures need project-specific implementations before use:
-
-- `auto_enable_custom_integrations` — autouse; without `enable_custom_integrations` a custom integration does not load
-  in a test at all.
 - `config_entry` — a `MockConfigEntry`, not yet added to `hass`.
 - `mock_api` — the `AsyncMock` that stands in for the data source; set `return_value` or `side_effect` per test.
 - `init_integration` — adds `config_entry`, sets it up with `mock_api` active, and returns the loaded entry.
 
 A library client instead of our own needs a different `mock_api` — see
-[`references/recipes.md`](references/recipes.md#mock_api-for-a-third-party-library-client). Recorded payloads go in
-a `fixtures/` folder: `load_fixture("device.json")` and `load_json_object_fixture("device.json")` resolve against the
-one next to the calling test file. Never pass `DOMAIN` as their second argument — that points at Core's
-`tests/components/<domain>/fixtures/`, which does not exist here.
+[`references/recipes.md`](references/recipes.md#mock_api-for-a-third-party-library-client).
 
 ## Layout
 
@@ -198,20 +177,18 @@ trigger, and is `None` again once the condition clears.
 
 ## Two settings that surprise people
 
-**Python warnings are errors; logged deprecations need a separate check.** `filterwarnings = ["error"]` in
+**Warnings are errors, and so are Home Assistant's own deprecations.** `filterwarnings = ["error"]` in
 `pyproject.toml` fails the suite on a Python `DeprecationWarning`, which catches libraries. Home Assistant's own
 deprecations — a removed helper, a deprecated constant, a wrong-thread call — are **logged** instead:
 `Detected that custom integration '<domain>' …` from `report_usage()`, or `The deprecated … was used from <domain>`
-from the deprecation helpers. They fail a test only if the suite actually implements a `caplog` check, such as an
-autouse `fail_on_deprecation_report` fixture. Inspect `tests/conftest.py`; do not assume this fixture exists or infer
-that passing tests prove those logs are absent. Until such a check is implemented as authorized test work, inspect
-the logs directly. A path no test reaches still needs the runtime log — see
+from the deprecation helpers. The autouse `fail_on_deprecation_report` fixture in `tests/conftest.py` fails every test
+whose `caplog` holds such a record. A path no test reaches still needs the runtime log — see
 [`ha-modern-apis`](../ha-modern-apis/SKILL.md#fixing-a-deprecation-warning). Fix the cause; never filter the message.
 
-An exception to "warnings are errors" may be needed for a warning **Home Assistant Core raises about its own use of a
-library it pins**, which no change here can fix and which would otherwise block tests that touch that subsystem.
-Aiohttp warnings from `homeassistant/helpers/aiohttp_client.py` and `homeassistant/components/http/` are examples to
-investigate, not warnings assumed to be ignored here. Check the actual `pyproject.toml` filters. Before adding one, confirm the warning's origin is a Core file and not this integration; a warning
+The one exception to "warnings are errors" is a warning **Home Assistant Core raises about its own use of a library it
+pins**, which no change here can fix and which would otherwise block every test that touches that subsystem — the
+aiohttp warnings from `homeassistant/helpers/aiohttp_client.py` and `homeassistant/components/http/` are the ones
+already ignored. Before adding one, confirm the warning's origin is a Core file and not this integration; a warning
 about our own code stays an error. Then key the ignore to the exact message rather than the category, and say in a
 comment where it comes from and why it cannot be fixed here — a bare `DeprecationWarning` ignore also hides the next
 real deprecation.

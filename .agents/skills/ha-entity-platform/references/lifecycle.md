@@ -11,7 +11,7 @@ Beyond `async_added_to_hass()` and `async_on_remove()` — the rule for those is
 - A subscription keyed on `self.entity_id` that is replaced later is released through
   `self.async_on_remove(lambda: self._unsub())`, not `self.async_on_remove(self._unsub)` — the latter keeps calling the
   first, stale unsubscribe function.
-- (HA 2026.11+) `async_entity_id_changed(old_entity_id)` is a `@callback` that moves such a subscription when the user
-  renames the entity ID; a custom integration implementing any add or remove hook must implement it to opt in to
-  in-place renames ([`deprecations.md`](../../ha-modern-apis/references/deprecations.md)). Until the minimum supported
-  version reaches 2026.11 the entity is removed and re-added on a rename, which the hooks above already handle.
+- `async_entity_id_changed(old_entity_id)` is a `@callback` that moves such a subscription when the user renames the
+  entity ID. A class that defines `async_added_to_hass`, `async_will_remove_from_hass` or
+  `async_prepare_to_add_to_hass` must implement it as well: without it, the entity is removed and re-added on a rename,
+  a fallback that goes in 2027.11 ([`deprecations.md`](../../ha-modern-apis/references/deprecations.md)).

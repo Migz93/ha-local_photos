@@ -8,7 +8,6 @@ config/*
 # Custom components (Marketplace- or HACS-installed dependencies and dev symlinks)
 custom_components/*
 !custom_components/.gitignore
-!custom_components/local_photos/
 
 # Virtual environment and shell configuration (when HOME is set to workspace)
 /.venv
@@ -35,6 +34,10 @@ __pycache__/
 
 # AI agent temporary scratch files and planning notes
 /.agents/scratch/
+
+# Per-person agent settings; the shared ones are .claude/settings.json
+/.claude/settings.local.json
+/.github/copilot/settings.local.json
 
 # Runtime artifact created by the template-sync workflow (never commit)
 /.templatesyncignore.runtime
@@ -72,11 +75,3 @@ Thumbs.db
 [Dd]esktop.ini
 *~
 *.swp
-
-# Private local instructions and agent permissions
-LOCAL.md
-.claude/settings.local.json
-
-.agents/scratch/
-
-mise.local.toml
