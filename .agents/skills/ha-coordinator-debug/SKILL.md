@@ -88,8 +88,7 @@ running. Getting this backwards is the most common way to debug a ghost.
 
 **While Home Assistant runs, the API is authoritative and the files under `config/.storage/` are stale by design** —
 they are `Store.async_delay_save` files, written some time after the change they describe. Everything here about
-`config/` applies to `.local/ha-config/<name>/` while another environment is active; `script/ha status` names the
-directory as `config_dir`.
+`config/` applies to the active environment's config directory. `script/ha status` displays it as `config_dir`.
 
 | What                              | Written                                            |
 | --------------------------------- | -------------------------------------------------- |

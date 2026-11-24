@@ -18,7 +18,9 @@ if [[ ${1:-} == --restore ]]; then
     if [[ ! -x node_modules/.bin/prettier ]]; then
         npm ci --silent
     fi
-    if [[ ! -d config/custom_components/hacs ]]; then
+    # shellcheck source=script/.lib/output.sh
+    source script/.lib/output.sh
+    if [[ ! -d $(ha_config_dir)/custom_components/hacs ]]; then
         script/setup/install-hacs
     fi
 fi

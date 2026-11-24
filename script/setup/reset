@@ -3,7 +3,7 @@
 # script/reset: Reset development environment to fresh state
 #
 # Removes all HA-generated files in the active Home Assistant environment's config directory (config/ for minimum,
-# .local/ha-config/<slot>/ for the others; script/ha-env) and re-runs complete setup (dependencies, optional HACS,
+# a per-slot directory for the others; script/ha-env) and re-runs complete setup (dependencies, optional HACS,
 # symlinks). configuration.yaml stays by default; --full also resets it from git. Asks for confirmation; --yes skips
 # the question, and without a terminal to ask in the script stops instead of waiting.
 #
@@ -72,13 +72,19 @@ else
     fi
 fi
 
+slot_config_root=$(ha_extra_config_root)
+preserve_slots=()
+if [[ $CONFIG_DIR == config && $slot_config_root == config/* ]]; then
+    preserve_slots=(-path "$slot_config_root" -prune -o)
+fi
+
 # Another environment's directory stays in place, so script/develop does not start it over from config/'s state; its
 # links into config/, configuration.yaml among them, are made again there and the shared file is left alone.
 if [[ ! -d $CONFIG_DIR ]]; then
     log_info "$CONFIG_DIR/ does not exist yet — nothing to delete"
 elif [[ $FULL_RESET == true ]]; then
     log_step "Removing all files in $CONFIG_DIR/"
-    find "$CONFIG_DIR" -mindepth 1 -delete
+    find "$CONFIG_DIR" -mindepth 1 -maxdepth 1 "${preserve_slots[@]}" -exec rm -rf -- {} +
 
     if [[ $CONFIG_DIR == config ]]; then
         if git ls-files --error-unmatch config/configuration.yaml >/dev/null 2>&1; then
@@ -93,7 +99,7 @@ elif [[ $FULL_RESET == true ]]; then
     fi
 else
     log_step "Removing all files except configuration.yaml"
-    if ! find "$CONFIG_DIR" -mindepth 1 -depth ! -name 'configuration.yaml' -exec rm -rf {} \; 2>/dev/null; then
+    if ! find "$CONFIG_DIR" -mindepth 1 -maxdepth 1 "${preserve_slots[@]}" ! -name 'configuration.yaml' -exec rm -rf -- {} +; then
         log_error "Failed to clean $CONFIG_DIR/ directory"
         exit 1
     fi

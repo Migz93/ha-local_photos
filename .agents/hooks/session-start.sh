@@ -11,9 +11,10 @@
 #
 #   - In a cloud session (CLAUDE_CODE_REMOTE=true), which starts on a fresh machine every time, it runs
 #     script/setup/bootstrap — mise, the pinned tools, Home Assistant and the test dependencies.
-#   - Anywhere else — the dev container included, where VS Code runs it for every new agent session — it runs
+#   - In the dev container or CI it runs
 #     script/setup/toolchain, which installs mise only where the environment belongs to the project, and tells the
 #     agent when the checkout still needs script/setup/bootstrap, without running that unasked.
+#   - On a bare local host it reports how to open the dev container and leaves the host environment alone.
 #
 # A run already in progress, such as the dev container's own setup, is waited for rather than started again. Plain
 # stdout becomes context for the agent; everything else goes to stderr. Never blocks a session: exits 0.
@@ -57,8 +58,9 @@ if [[ ! -x script/setup/bootstrap ]]; then
     exit 0
 fi
 
-# Keep project dependency setup inside a disposable container or CI.
-if [[ ! -f /.dockerenv && -z ${REMOTE_CONTAINERS:-} && -z ${CODESPACES:-} && -z ${GITHUB_ACTIONS:-} ]]; then
+# Set up dependencies only in the project's development environments.
+if [[ ! -f /.dockerenv && -z ${REMOTE_CONTAINERS:-} && -z ${CODESPACES:-} && -z ${GITHUB_ACTIONS:-} && ${CLAUDE_CODE_REMOTE:-} != true ]]; then
+    echo "Open the project devcontainer before running development setup."
     exit 0
 fi
 

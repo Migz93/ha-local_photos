@@ -133,9 +133,20 @@ ha_current_slot() {
     printf '%s' "${link##*/}"
 }
 
+# The project devcontainer mounts config as tmpfs, including config for optional environments.
+ha_extra_config_root() {
+    if mountpoint -q config && [[ $(stat -f -c %T config) == tmpfs ]]; then
+        printf 'config/.ha-envs'
+    else
+        printf '.local/ha-config'
+    fi
+}
+
 # Whether a local Home Assistant runs in any environment: one holds the lock on its config directory's run lock.
 ha_running() {
-    python3 - config/.ha_run.lock .local/ha-config/*/.ha_run.lock <<'PY'
+    local extra_config_root
+    extra_config_root=$(ha_extra_config_root)
+    python3 - config/.ha_run.lock "$extra_config_root"/*/.ha_run.lock <<'PY'
 import fcntl, sys
 for name in sys.argv[1:]:
     try:
@@ -176,7 +187,7 @@ ha_config_dir() {
     slot="$(ha_current_slot)"
     case "$slot" in
     "" | minimum) printf 'config' ;;
-    *) printf '.local/ha-config/%s' "$slot" ;;
+    *) printf '%s/%s' "$(ha_extra_config_root)" "$slot" ;;
     esac
 }
 
