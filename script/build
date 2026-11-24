@@ -10,7 +10,7 @@
 #   ./script/build [--output DIR] [--zip FILE] [--version X.Y.Z] [--in-place]
 #
 # Options:
-#   --output DIR     Build folder (default: .local/build/<domain>); emptied first
+#   --output DIR     Build folder (default: .local/build/<domain>); other locations must be empty
 #   --zip FILE       Also pack the build folder into FILE, its files at the archive root
 #   --version X.Y.Z  Fail unless manifest.json carries this version
 #   --in-place       Run the hooks on the integration folder itself, for local development; no copy, no ZIP
@@ -62,10 +62,10 @@ done
 
 # Paths are resolved against the caller's directory and made absolute, so a hook that changes directory still finds them.
 absolute_path() {
-    python3 -c 'import os, sys; print(os.path.normpath(os.path.join(sys.argv[2], sys.argv[1])))' "$1" "$CALLER_DIR"
+    python3 -c 'import os, sys; print(os.path.realpath(os.path.join(sys.argv[2], sys.argv[1])))' "$1" "$CALLER_DIR"
 }
 
-REPO_ROOT="$PWD"
+REPO_ROOT=$(pwd -P)
 INTEGRATION_DIR="$REPO_ROOT/$INTEGRATION_PATH"
 
 if [[ $IN_PLACE == true ]]; then
@@ -75,18 +75,27 @@ else
     if [[ -n $OUTPUT ]]; then
         BUILD_DIR="$(absolute_path "$OUTPUT")"
     else
-        BUILD_DIR="$REPO_ROOT/.local/build/$INTEGRATION_DOMAIN"
+        BUILD_DIR="$(absolute_path "$REPO_ROOT/.local/build/$INTEGRATION_DOMAIN")"
     fi
-    # The build folder is emptied first: never let that reach the repository or the integration itself.
+    # Only the dedicated build tree may contain a directory this script empties.
     case "$REPO_ROOT/" in "${BUILD_DIR%/}/"*) die "--output $BUILD_DIR contains the repository" ;; esac
-    case "$BUILD_DIR/" in "$INTEGRATION_DIR/"*) die "--output $BUILD_DIR lies inside the integration folder" ;; esac
+    case "$BUILD_DIR" in
+    "$REPO_ROOT/.local/build/"*) ;;
+    "$REPO_ROOT/"*) die "--output inside the repository must be under .local/build/" ;;
+    esac
 fi
 [[ -z $ZIP_FILE ]] || ZIP_FILE="$(absolute_path "$ZIP_FILE")"
 export BUILD_DIR
 
 if [[ $IN_PLACE == false ]]; then
     log_header "Building $INTEGRATION_DOMAIN into $BUILD_DIR"
-    rm -rf "$BUILD_DIR"
+    if [[ $BUILD_DIR == "$REPO_ROOT/.local/build/"* ]]; then
+        rm -rf -- "$BUILD_DIR"
+    elif [[ -e $BUILD_DIR ]]; then
+        [[ -d $BUILD_DIR ]] || die "--output $BUILD_DIR is not a directory"
+        existing=$(find "$BUILD_DIR" -mindepth 1 -maxdepth 1 -print -quit)
+        [[ -z $existing ]] || die "--output $BUILD_DIR must be empty"
+    fi
     mkdir -p "$BUILD_DIR"
 fi
 

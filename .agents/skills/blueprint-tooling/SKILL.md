@@ -179,7 +179,7 @@ applies — puts that venv ahead of mise's own Python. A new tool goes there wit
 list, which no cloud session or CI job sees. In an integration made from the blueprint, its own tools go into
 `.config/mise/conf.d/project.toml` instead: template sync overwrites `mise.toml` and never touches that file, and mise
 loads it everywhere `mise.toml` is loaded. A tool in both keeps the blueprint's version. A terminal tool only a person in the dev container uses goes into
-`mise.devcontainer.toml` instead, which mise loads there through `MISE_ENV=devcontainer`. apt keeps the system
+`mise.devcontainer.toml` instead. Set `MISE_ENV=devcontainer` inside the devcontainer to opt in. apt keeps the system
 libraries Home Assistant's wheels build against and the few tools mise has no prebuilt binary for. Python follows Home Assistant: `script/ha-version-sync` fails when the
 pin no longer satisfies Home Assistant's `requires-python`. Node is not pinned there; every environment brings one.
 
@@ -188,14 +188,14 @@ Two bots share the updates without overlapping — a dependency raised by both w
 | What                                                                | Raised by                             | Pull request                                                                                                 |
 | ------------------------------------------------------------------- | ------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
 | GitHub Actions, npm, dev container features, `requirements_dev.txt` | Dependabot (`.github/dependabot.yml`) | weekly, minor/patch grouped per ecosystem                                                                    |
-| `mise.toml`, the mise version in workflows and the dev container    | Renovate (`.github/renovate.json`)    | weekly, one `tooling` group                                                                                  |
-| `manifest.json` + `requirements.txt`                                | Renovate                              | one per package, a major waits for approval; `fix(deps)` only for a security advisory                        |
-| `pytest-homeassistant`                                              | Renovate                              | its own; a new release train fails `script/ha-version-sync` until `hacs.json` follows                        |
+| `mise.toml`, the mise version in workflows                          | Renovate (`.github/renovate.json`)    | weekly, one `tooling` group                                                                                  |
+| `manifest.json` + `requirements.txt`                                | Maintainer                            | Coordinate runtime dependency pins                                                                           |
+| `pytest-homeassistant`                                              | Maintainer                            | Keep the test pin aligned with the supported `hacs.json` release train                                       |
 | the agent plugin tag in the three agent settings files              | Renovate                              | one `agent plugins` pull request for all three; `script/setup/agent-plugins --check` fails on a partial bump |
 
 Renovate needs its GitHub App installed on the repository and does nothing without it: no error, no pull request.
-Dependabot has no mise ecosystem, so without the App the tool pins and the runtime requirements only move by hand;
-`toolchain-update-check.yml` then keeps one issue open listing the outdated pins, and stays quiet while Renovate is
+Dependabot has no mise ecosystem, so without the App the mise tool pins move by hand.
+`toolchain-update-check.yml` keeps one issue open listing the outdated pins, and stays quiet while Renovate is
 active.
 
 **A `googleapis/release-please-action` update needs one more step:** replace
@@ -204,9 +204,7 @@ what proves `script/release-notes --apply` still writes a body release-please ca
 `mise run renovate-dry-run` shows what Renovate would raise, without opening anything. The developer-facing version of
 this section is `docs/development/DEPENDENCY_UPDATES.md`.
 
-To drop Dependabot and let Renovate raise everything, delete `.github/dependabot.yml` and the first two package rules
-in `.github/renovate.json`; the grouping and the release-age settings for those ecosystems are already there. Keep
-Dependabot alerts on in the repository settings either way — Renovate reads them for its security pull requests.
+Switching dependency ownership requires maintainer approval and coordinated changes to both bot configurations.
 
 ## Extending the scripts with hooks
 

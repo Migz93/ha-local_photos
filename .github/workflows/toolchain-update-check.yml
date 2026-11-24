@@ -100,8 +100,7 @@ jobs:
             {
               echo "These pins have newer releases. Renovate is not active on this repository, so they are raised"
               echo "by hand: update \`mise.toml\` or \`mise.devcontainer.toml\`, and for \`mise\` itself also"
-              echo "the \`version:\` input of \`jdx/mise-action\` in the workflows and the mise feature in"
-              echo "\`.devcontainer/devcontainer.json\`."
+              echo "the \`version:\` input of \`jdx/mise-action\` in the workflows."
               echo "Python follows Home Assistant — raise it only within what \`script/ha-version-sync\` accepts."
               echo ""
               echo "| Tool | Pinned | Latest |"

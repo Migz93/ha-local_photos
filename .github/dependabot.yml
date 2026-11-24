@@ -29,10 +29,6 @@ updates:
       day: "monday"
     commit-message:
       prefix: "chore(deps)"
-    # These two take a tool version beside their pin; Renovate raises both together (.github/renovate.json)
-    ignore:
-      - dependency-name: "trufflesecurity/trufflehog"
-      - dependency-name: "jdx/mise-action"
     # Let new action versions settle for 7 days before opening a PR (same as HA Core)
     cooldown:
       default-days: 7
@@ -48,10 +44,6 @@ updates:
     directory: "/"
     assignees:
       - Migz93
-    # The integration's runtime requirements live in manifest.json as well, which Dependabot cannot read.
-    # Renovate (.github/renovate.json) raises both files together; without it they are bumped by hand.
-    exclude-paths:
-      - "requirements.txt"
     schedule:
       interval: "weekly"
       day: "monday"
@@ -62,7 +54,7 @@ updates:
       # Its version must stay in sync with the "homeassistant" key in hacs.json — update that manually
       # when bumping pytest-homeassistant manually.
       - dependency-name: "homeassistant"
-      # Each pytest-homeassistant release matches one Home Assistant release.
+      # Each pytest-homeassistant release matches a Home Assistant Core version.
       # Keep this pinned and bump it manually together with hacs.json "homeassistant".
       - dependency-name: "pytest-homeassistant"
     # Let patch releases settle 3 days, minor releases 7 days before opening a PR

@@ -80,13 +80,17 @@ def test_pre_hook_output_survives_and_hooks_may_change_directory(repo: Path) -> 
 
 
 @pytest.mark.unit
-@pytest.mark.parametrize("output", [".", "..", "custom_components/demo", "custom_components/demo/sub"])
+@pytest.mark.parametrize(
+    "output", [".", "..", ".git", "script", "custom_components", "custom_components/demo", "custom_components/demo/sub"]
+)
 def test_output_that_would_delete_the_source_is_refused(repo: Path, output: str) -> None:
-    """The build folder is emptied first, so it may not contain the repository or sit in the integration."""
+    """Only the dedicated build tree may be used as build output within the repository."""
     result = _build(repo, "--output", output)
 
     assert result.returncode != 0
     assert (repo / "custom_components" / "demo" / "manifest.json").exists()
+    assert (repo / ".git").is_dir()
+    assert (repo / "script" / "build").is_file()
 
 
 @pytest.mark.unit
