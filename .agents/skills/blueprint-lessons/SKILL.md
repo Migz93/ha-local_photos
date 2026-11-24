@@ -52,7 +52,7 @@ following. Growth is the failure mode to guard against, not forgetting.
    if an agent could make it again elsewhere, the lesson needs a home (§2). One earlier fix of a different cause in the
    same file does not.
 
-4. **Regression test** per [`ha-testing`](../ha-testing/SKILL.md).
+4. Add regression coverage per [`ha-testing`](../ha-testing/SKILL.md) when the developer requests test changes.
 
 ## 2. Where a lesson goes
 

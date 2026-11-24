@@ -8,7 +8,7 @@ description: >-
   must clear, where records live, the file format, superseding, the rule a decision leaves behind, and the index script.
   SYMPTOMS — load this if you are about to: edit a record that has already landed; record a choice that made itself;
   record a breaking change made before 1.0.0; write the index by hand; or make a hard-to-reverse choice without reading
-  the index first.
+  the project's decision log first.
 ---
 
 # Record decisions
