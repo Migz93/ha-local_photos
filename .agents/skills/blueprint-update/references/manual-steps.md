@@ -73,16 +73,11 @@ passes while the old single file is still there; `docs/` and `AGENTS.md` are not
 
 ## `template-sync-prune` — 2026-11-22
 
-**Check:** `grep -q 'prune-blueprint --apply' .github/workflows/template-sync.yml && test ! -e script/import-overlay`
+**Check:** `grep -Fxq script/prune-blueprint .templatesyncignore && test ! -e script/import-overlay`
 
-The sync brings every file the blueprint adds, including the ones that only make sense in the blueprint itself — now
-`script/import-overlay` and its test. The blueprint's `template-sync.yml` gained a step _Drop blueprint-only files_
-that runs `script/prune-blueprint --apply` on the sync branch, so such files never reach `main`. The workflow is
-excluded from the sync:
-
-1. Copy that step from the blueprint's `template-sync.yml` to the end of this repository's; `script/blueprint-update`
-   shows it in context.
-2. Run `script/prune-blueprint --apply` once, for what earlier syncs already brought.
+Review the sync diff for template-only files such as `script/import-overlay` and its tests. Remove those files from
+the sync branch and keep their exclusions in `.templatesyncignore`. Preserve project-owned files such as
+`.github/FUNDING.yml`, along with their existing exclusions.
 
 ## `branch-and-pr-rules` — 2026-11-22
 

@@ -71,7 +71,6 @@ script/hassfest          # official HA validation (first run downloads ~27 MB)
 script/test              # integration tests plus synchronized tooling tests
 script/skills-check      # validate .agents/skills/ and agent protected paths (also part of lint / lint-check)
 script/architecture-check # conservative architecture guardrails (also part of lint / lint-check) — see below
-script/push-gate         # git's pre-push hook: clean HEAD only, then lint-check + type-check in parallel
 script/version           # read the canonical version from manifest.json
 script/second-review     # a review by another agent CLI than this session's — see haci-change-review (--brief: its reviewer brief)
 script/build             # build the integration as it ships (--zip, --in-place); hook: build.post.sh
@@ -80,9 +79,8 @@ script/ha-version-sync   # align the pinned Home Assistant version across config
 script/setup/toolchain   # install the tools mise.toml pins (--install-mise: mise itself too) — run by bootstrap
 script/setup/agent-plugins # install the haci plugins at the tag .claude/settings.json pins (--check: the 3 agents agree)
 script/setup/github      # apply the GitHub settings and .github/rulesets/ (--dry-run first) — see REPOSITORY_SETUP.md
-script/secret-scan       # betterleaks over --staged changes (the commit hook), a --range, or --all of the history
+script/secret-scan       # on-demand --staged scan, a --range, or --all of the history
 script/clean             # remove caches, logs, build artifacts
-script/prune-blueprint   # list (--apply: remove) blueprint-only leftovers; ignore them and project-owned paths in .templatesyncignore
 script/help              # list every script with its description
 ```
 
@@ -253,6 +251,8 @@ therefore set in a hook — `script/hooks/develop.pre.sh` for anything `script/d
 
 ## Template sync
 
+The agent pre-push hook checks the clean branch with the project's lint and type checks in the devcontainer.
+
 A weekly workflow opens a pull request with upstream blueprint changes. It uses `-X theirs`, so **the template version
 wins** on any file both sides changed — the PR is always mergeable, and the diff shows your version being replaced.
 Review before merging.
@@ -266,8 +266,8 @@ Review before merging.
   `script/template-sync-guard` restores it on the sync branch and comments what it kept. That step lives in
   `template-sync.yml`, which the sync never updates, so a repository created before it existed copies the step over
   by hand. A sync PR that lowers a version anyway was produced without the step.
-- Blueprint-only files the sync brings are removed on the sync branch by `script/prune-blueprint --apply`, in the last
-  step of `template-sync.yml`, and listed in `.templatesyncignore` — the same copy-by-hand caveat applies.
+- Review and remove blueprint-only files from the sync branch. Keep project-owned files such as
+  `.github/FUNDING.yml` and retain their `.templatesyncignore` entries.
 - Changes the sync cannot deliver — to excluded files such as `AGENTS.md`, or steps a repository has to take itself —
   are carried over with [`blueprint-update`](../blueprint-update/SKILL.md) and `script/blueprint-update`.
 

@@ -14,7 +14,7 @@
 #   - In the dev container or CI it runs
 #     script/setup/toolchain, which installs mise only where the environment belongs to the project, and tells the
 #     agent when the checkout still needs script/setup/bootstrap, without running that unasked.
-#   - On a bare local host it reports how to open the dev container and leaves the host environment alone.
+#   - On a bare local host it reports the devcontainer requirement when run manually.
 #
 # A run already in progress, such as the dev container's own setup, is waited for rather than started again. Plain
 # stdout becomes context for the agent; everything else goes to stderr. Never blocks a session: exits 0.
@@ -60,7 +60,7 @@ fi
 
 # Set up dependencies only in the project's development environments.
 if [[ ! -f /.dockerenv && -z ${REMOTE_CONTAINERS:-} && -z ${CODESPACES:-} && -z ${GITHUB_ACTIONS:-} && ${CLAUDE_CODE_REMOTE:-} != true ]]; then
-    echo "Open the project devcontainer before running development setup."
+    note "Open the project devcontainer before running development setup."
     exit 0
 fi
 
