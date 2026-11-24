@@ -37,9 +37,8 @@ scaffolding and the judgement calls.
 
 ## The shared fixtures: `tests/conftest.py`
 
-Check the repository's `tests/conftest.py` for fixtures, and reuse any it defines. Custom integration tests that
-need the plugin's `enable_custom_integrations` fixture can request it directly or through a shared autouse fixture.
-The examples below use these fixture names. Add the fixtures to `tests/conftest.py` if you adopt those examples and
+The `pytest-homeassistant` plugin loads custom integrations by default in its `hass` fixture.
+Check `tests/conftest.py` for project-specific fixtures and reuse any it defines. The examples below use these fixture names. Add the fixtures to `tests/conftest.py` if you adopt those examples and
 the repository doesn't already provide them:
 
 - `config_entry` — a `MockConfigEntry`, not yet added to `hass`.
@@ -180,7 +179,7 @@ trigger, and is `None` again once the condition clears.
 
 ## Two settings that surprise people
 
-**Warnings are errors, and so are Home Assistant's own deprecations.** `filterwarnings = ["error"]` in
+**Python warnings are errors.** `filterwarnings = ["error"]` in
 `pyproject.toml` fails the suite on a Python `DeprecationWarning`, which catches libraries. Home Assistant's own
 deprecations — a removed helper, a deprecated constant, a wrong-thread call — are **logged** instead:
 `Detected that custom integration '<domain>' …` from `report_usage()`, or `The deprecated … was used from <domain>`

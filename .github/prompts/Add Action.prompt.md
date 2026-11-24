@@ -283,12 +283,11 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     return True
 
 
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Set up from a config entry."""
     # ... existing setup code ...
-    # DO NOT register service actions here!
-
-    return True
+    # Register integration-wide service actions in async_setup.
+    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 ```
 
 **For platform-specific service actions (entity service actions):**

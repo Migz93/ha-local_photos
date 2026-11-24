@@ -293,9 +293,9 @@ written language-aware from the first line, even if it stays English-only for ye
 The agent rule stays: change `en.json` only, and another language file only when asked
 ([`ha-translations`](../ha-translations/SKILL.md)).
 
-Nothing in Home Assistant's tooling checks that every enum option is translated, that every attribute has a display
-name, or that no language file keeps a key `en.json` no longer has. `tests/test_translations.py` checks all three through the
-running entities, before a user sees a raw key.
+The blueprint's optional `tests/test_translations.py` checks enum option labels, attribute names and stale
+translation keys through running entities. See the [manual update steps](../blueprint-update/references/manual-steps.md)
+if the project wants to adopt this check.
 
 ## Do not
 

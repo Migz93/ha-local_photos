@@ -97,8 +97,8 @@ type {ClassPrefix}ConfigEntry = ConfigEntry[{ClassPrefix}Data]
 entry.runtime_data = {ClassPrefix}Data(client=client, coordinator=coordinator, integration=integration)
 ```
 
-**3. Tests catch Home Assistant's deprecations through a fixture, not through `warnings`** — see
-[`ha-testing`](../ha-testing/SKILL.md#two-settings-that-surprise-people). Fix the deprecation; never filter it.
+**3. Check Home Assistant deprecation logs in tests.** Use `caplog` or a fixture that checks it. See
+[`ha-testing`](../ha-testing/SKILL.md#two-settings-that-surprise-people). Fix the cause of each deprecation.
 
 ## Fixing a deprecation warning
 
