@@ -165,7 +165,7 @@ script/type-check   # Pyright — no auto-fix ever
 - ✅ **ALWAYS ask first** before creating permanent documentation
 - ✅ **Prefer module/class/function docstrings** over separate markdown files
 - ✅ **Prefer extending** existing docs over creating new files
-- ✅ **Use `.ai-scratch/`** for temporary planning and notes (never committed)
+- ✅ **Use `.agents/scratch/`** for temporary planning and notes (never committed)
 - Developer docs → `docs/development/` (ASK FIRST)
 - User docs → `docs/user/` (ASK FIRST)
 

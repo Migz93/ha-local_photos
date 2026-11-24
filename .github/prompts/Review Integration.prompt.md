@@ -270,7 +270,7 @@ requests.get(url)
 
 ## Review Report Structure
 
-Create report in `.ai-scratch/review-report.md`:
+Create report in `.agents/scratch/review-report.md`:
 
 ```markdown
 # Integration Review Report

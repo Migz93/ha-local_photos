@@ -173,7 +173,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-import voluptuous as vol
+import probatio
 
 from homeassistant.core import HomeAssistant, ServiceCall, SupportsResponse
 from homeassistant.helpers import config_validation as cv
@@ -186,11 +186,11 @@ _LOGGER = logging.getLogger(__name__)
 ATTR_PARAMETER = "parameter_name"
 
 # Action schema for validation
-SERVICE_SCHEMA = vol.Schema(
+SERVICE_SCHEMA = probatio.Schema(
     {
-        vol.Required(ATTR_PARAMETER): cv.string,
+        probatio.Required(ATTR_PARAMETER): cv.string,
         # Add more parameters with validators
-        vol.Optional("optional_param", default=100): cv.positive_int,
+        probatio.Optional("optional_param", default=100): cv.positive_int,
     }
 )
 
@@ -544,18 +544,18 @@ For entity actions with dynamic fields based on capabilities:
 ### Common Validators
 
 ```python
-import voluptuous as vol
+import probatio
 from homeassistant.helpers import config_validation as cv
 
-SERVICE_SCHEMA = vol.Schema({
-    vol.Required("string_param"): cv.string,
-    vol.Required("int_param"): cv.positive_int,
-    vol.Required("float_param"): vol.Range(min=0.0, max=100.0),
-    vol.Required("bool_param"): cv.boolean,
-    vol.Required("time_param"): cv.time,
-    vol.Required("entity_id"): cv.entity_id,
-    vol.Required("enum_param"): vol.In(["option1", "option2", "option3"]),
-    vol.Optional("optional_param", default="default"): cv.string,
+SERVICE_SCHEMA = probatio.Schema({
+    probatio.Required("string_param"): cv.string,
+    probatio.Required("int_param"): cv.positive_int,
+    probatio.Required("float_param"): probatio.Range(min=0.0, max=100.0),
+    probatio.Required("bool_param"): cv.boolean,
+    probatio.Required("time_param"): cv.time,
+    probatio.Required("entity_id"): cv.entity_id,
+    probatio.Required("enum_param"): probatio.In(["option1", "option2", "option3"]),
+    probatio.Optional("optional_param", default="default"): cv.string,
 })
 ```
 
@@ -565,11 +565,11 @@ SERVICE_SCHEMA = vol.Schema({
 def validate_custom(value: Any) -> Any:
     """Validate custom parameter."""
     if not meets_criteria(value):
-        raise vol.Invalid("Parameter does not meet criteria")
+        raise probatio.Invalid("Parameter does not meet criteria")
     return value
 
-SERVICE_SCHEMA = vol.Schema({
-    vol.Required("custom"): validate_custom,
+SERVICE_SCHEMA = probatio.Schema({
+    probatio.Required("custom"): validate_custom,
 })
 ```
 

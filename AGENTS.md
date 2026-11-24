@@ -110,7 +110,7 @@ If a developer requests something that contradicts these instructions:
 
 Read and update the existing architecture decision log at `docs/development/DECISIONS.md`. A move to per-decision files requires maintainer approval.
 
-**AI Planning:** Use `.ai-scratch/` for temporary notes (never committed)
+**AI Planning:** Use `.agents/scratch/` for temporary notes (never committed)
 
 **Rules:**
 
