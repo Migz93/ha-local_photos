@@ -159,6 +159,9 @@ def guard(base: str, *, fix: bool) -> list[Restore]:
                     occurrences, kept.get(key, []), strict=False
                 ):
                     if lower(version, old_version):
+                        # A pin can match both a built-in and custom reader. Keep edits disjoint.
+                        if any(span[0] < previous[1] and previous[0] < span[1] for previous, _ in replacements):
+                            continue
                         restores.append(Restore(path, key, version, old_version))
                         replacements.add((span, old_value))
         if fix and replacements:

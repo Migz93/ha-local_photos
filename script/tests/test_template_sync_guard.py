@@ -3,6 +3,7 @@
 from pathlib import Path
 import subprocess
 import sys
+import tomllib
 
 import pytest
 
@@ -83,10 +84,10 @@ def test_restores_every_lowered_pin(synced: Path) -> None:
     result = _guard(synced)
 
     assert result.returncode == 0, result.stderr
-    mise = _read(synced, "mise.toml")
-    assert 'min_version = "2026.10.22"' in mise
-    assert 'uv = "0.14.0"' in mise
-    assert 'fd = "10.5.0"' in mise
+    mise = tomllib.loads(_read(synced, "mise.toml"))
+    assert mise["min_version"] == "2026.10.22"
+    assert mise["tools"]["uv"] == "0.14.0"
+    assert mise["tools"]["fd"] == "10.5.0"
     assert "==2026.11.4" in _read(synced, "requirements_test.txt")
     package = _read(synced, "package.json")
     assert '"prettier": "3.9.0"' in package
