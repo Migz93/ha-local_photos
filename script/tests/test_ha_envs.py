@@ -340,9 +340,9 @@ ha_envs_create_venv "$PWD/.local/ha-venv/versions/2099.1.0" 2099.1.0
     assert result.returncode == 0, result.stderr
     with_python, without = [line for line in result.stdout.splitlines() if line.startswith("UV_PYTHON_INSTALL_DIR")]
     assert with_python.startswith(f"UV_PYTHON_INSTALL_DIR={_root(workdir)}/python venv")
-    assert "--python-preference only-managed --python 3.15" in with_python
+    assert "--python-preference only-managed --python >=3.15.0,<3.16" in with_python
     assert "--python-preference only-managed" in without
-    assert "--python 3" not in without
+    assert "--python " not in without
 
 
 def _uv_listing(listing: list[dict[str, str]]) -> str:
@@ -552,9 +552,9 @@ def test_custom_is_a_fixed_point_that_moves_down_onto_an_older_python(workdir: P
     assert _versions(workdir) == ["2026.11.1"]
     venvs = [line for line in (workdir / "uv-calls").read_text(encoding="utf-8").splitlines() if " venv " in line]
     assert len(venvs) == 2
-    assert "--python 3.15" in venvs[0]
+    assert "--python >=3.15.0,<3.16" in venvs[0]
     assert venvs[0].endswith("/versions/2026.12.1")
-    assert "--python 3.14" in venvs[1]
+    assert "--python >=3.14.2,<3.15" in venvs[1]
     assert venvs[1].endswith("/versions/2026.11.1")
 
 

@@ -43,12 +43,19 @@ def repository(tmp_path: Path) -> Path:
 
 
 def _environment(home: Path, **env: str) -> dict[str, str]:
-    """A clean environment: the caller's, a CI runner's or a dev container's markers would change what the hook sees."""
-    return {"HOME": str(home), "PATH": "/usr/bin:/bin", "MISE_DATA_DIR": str(home / "mise"), "LANG": "C.UTF-8", **env}
+    """Use a synthetic CI environment so the hook can exercise bootstrap without using caller state."""
+    return {
+        "HOME": str(home),
+        "PATH": "/usr/bin:/bin",
+        "MISE_DATA_DIR": str(home / "mise"),
+        "LANG": "C.UTF-8",
+        "GITHUB_ACTIONS": "true",
+        **env,
+    }
 
 
 def _run(cwd: Path | None, home: Path, **env: str) -> subprocess.CompletedProcess[str]:
-    """Run the hook with a SessionStart payload and an environment free of the dev container's markers."""
+    """Run the hook with a synthetic SessionStart payload."""
     payload = json.dumps({"hook_event_name": "SessionStart", **({"cwd": str(cwd)} if cwd else {})})
     return subprocess.run(
         ["bash", str(HOOK)],
