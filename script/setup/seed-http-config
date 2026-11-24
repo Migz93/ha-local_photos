@@ -34,8 +34,8 @@ run_hook "setup/seed-http-config" "pre"
 
 activate_venv
 
-# Link a new slot's shared configuration before ensure_config can write defaults.
-if [[ $HA_CONFIG_DIR != config && ! -d $HA_CONFIG_DIR ]]; then
+# Link shared configuration for new and reset slots before ensure_config can write defaults.
+if [[ $HA_CONFIG_DIR != config && ! -f $HA_CONFIG_DIR/.HA_VERSION ]]; then
     version=$(python3 -c 'from homeassistant.const import __version__; print(__version__)')
     ha_envs_prepare_config "$HA_CONFIG_DIR" "$version"
 fi

@@ -146,21 +146,27 @@ def _claude_installed() -> set[str]:
     }
 
 
-def install(pins: list[Pin]) -> None:
-    """Install for every agent CLI on PATH; report what was skipped."""
+def install(pins: list[Pin]) -> bool:
+    """Install for available agent CLIs and return whether their commands succeeded."""
+    claude_ok = codex_ok = True
     if shutil.which("claude"):
         installed = _claude_installed()
         for pin in pins:
             for command in claude_commands(pin, _json(CLAUDE_LOCAL), installed):
-                _run(command)
-        print("✓ Claude Code: " + ", ".join(f"{p.marketplace}@{p.ref}" for p in pins))
+                if not _run(command):
+                    claude_ok = False
+        if claude_ok:
+            print("✓ Claude Code: " + ", ".join(f"{p.marketplace}@{p.ref}" for p in pins))
     else:
         print("· Claude Code: claude not on PATH, skipped")
     if shutil.which("codex") and CODEX_CONFIG.is_file():
         for pin in pins:
-            _run(["codex", "plugin", "marketplace", "upgrade", pin.marketplace])
-        print("✓ Codex: refreshed from .codex/config.toml (takes effect once the project is trusted)")
+            if not _run(["codex", "plugin", "marketplace", "upgrade", pin.marketplace]):
+                codex_ok = False
+        if codex_ok:
+            print("✓ Codex: refreshed from .codex/config.toml (takes effect once the project is trusted)")
     print("· Copilot: installs from .github/copilot/settings.json itself")
+    return claude_ok and codex_ok
 
 
 def main(argv: list[str]) -> int:
@@ -177,8 +183,8 @@ def main(argv: list[str]) -> int:
     if problems:
         return 1
     print(f"✓ {CLAUDE_SETTINGS}, {COPILOT_SETTINGS} and {CODEX_CONFIG} pin the same plugins")
-    if "--check" not in argv:
-        install(pins)
+    if "--check" not in argv and not install(pins):
+        return 1
     return 0
 
 
