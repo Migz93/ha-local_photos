@@ -127,7 +127,12 @@ def test_a_named_cli_never_falls_back_to_another(tmp_path: Path, cli: str, signe
 @pytest.mark.parametrize(
     ("cli", "expected"),
     [
-        pytest.param("claude", "claude --print --tools  --model m1", id="claude"),
+        pytest.param(
+            "claude",
+            'claude --print --safe-mode --restricted --strict-mcp-config --mcp-config {"mcpServers":{}} '
+            "--permission-mode dontAsk --tools  --model m1",
+            id="claude",
+        ),
         pytest.param(
             "copilot",
             "copilot --silent --no-custom-instructions --deny-tool=write --deny-tool=shell --model m1",
@@ -137,8 +142,8 @@ def test_a_named_cli_never_falls_back_to_another(tmp_path: Path, cli: str, signe
     ],
 )
 @pytest.mark.unit
-def test_prompt_runs_without_tools_and_with_the_model(tmp_path: Path, cli: str, expected: str) -> None:
-    """Each CLI gets its own non-interactive flags, no tools, and AGENT_MODEL when it is set."""
+def test_prompt_uses_cli_flags_and_requested_model(tmp_path: Path, cli: str, expected: str) -> None:
+    """Each CLI gets its own non-interactive flags and AGENT_MODEL when it is set."""
     folder = _bin(tmp_path, cli)
 
     result = _run(
