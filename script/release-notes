@@ -13,7 +13,7 @@
 #
 # Examples:
 #   ./script/release-notes               # Print enhanced notes to stdout
-#   ./script/release-notes --apply       # Rewrite the notes in the open release-please PR
+#   ./script/release-notes --apply       # Generate with tool-free Claude and update the release PR
 #   ./script/release-notes --interactive # Open an agent session with the context
 #
 # From inside an agent session, for a fresh subagent:
@@ -88,7 +88,14 @@ case "$MODE" in
 --interactive)
     agent_resolve --any || die "No agent CLI to use — see above, or set AGENT_CLI"
     ;;
---apply | stdout)
+--apply)
+    # This publishes the model's answer directly. Use the CLI whose prompt mode disables tools and customizations.
+    if [[ ${AGENT_CLI:-auto} != auto && ${AGENT_CLI:-} != claude ]]; then
+        die "--apply requires Claude Code in tool-free mode. Preview with your selected agent and use --apply-file after reviewing the notes."
+    fi
+    AGENT_CLI=claude agent_resolve || die "Sign in to Claude Code for --apply, or review a preview and use --apply-file"
+    ;;
+stdout)
     agent_resolve || die "No agent CLI to use — see above, or set AGENT_CLI"
     ;;
 *)

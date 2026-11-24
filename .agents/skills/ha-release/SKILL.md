@@ -127,7 +127,7 @@ script/version --tag        # v0.1.0
 script/version --check      # manifest.json vs .release-please-manifest.json
 
 script/release-notes              # preview AI-enhanced notes on stdout
-script/release-notes --apply      # write them into the open release PR body
+script/release-notes --apply      # use tool-free Claude and write the open release PR body
 script/release-notes --interactive # write context to .agents/scratch/ and open a session
 script/release-notes --prompt     # only write the prompt to .agents/scratch/, print its path
 script/release-notes --apply-file NOTES # write finished notes into the open release PR body
@@ -143,11 +143,10 @@ commit reaches `main`, and the rewritten notes are gone without a word. `--apply
 version heading and leaves the rest of the body as release-please reads it back; the release takes its notes from
 there, while `CHANGELOG.md` keeps release-please's own wording.
 
-**Asked for the notes inside an agent session, never write them in that session.** It knows the work behind each
-change, and that knowledge leaks into text meant for people who do not. Run `--apply`: it starts a separate agent CLI
-in an empty folder, with nothing but the prompt. Where that cannot run — a sandbox, no CLI signed in — run `--prompt`,
-hand the file to a **fresh** subagent with no other context (not a fork, which inherits this session), show the
-developer its answer, and write it with `--apply-file` once they agree.
+**Generate release notes in a fresh context.** The current agent session may know details that belong outside the
+public notes. Automatic `--apply` uses Claude Code in an empty folder with tools and customizations disabled.
+For another agent, use the preview or give the file from `--prompt` to a fresh session. Show the developer the notes
+and use `--apply-file` once they approve the text.
 
 **The generated notes are a draft.** Whoever publishes the release is accountable for their technical accuracy, so
 they get read before the release PR is merged — not after ([`AI_POLICY.md`](../../../AI_POLICY.md)).

@@ -2,10 +2,8 @@
 # Coding agent CLI library
 # shellcheck disable=SC2034  # AGENT_NAME and AGENT_BIN are used by sourcing scripts
 #
-# Runs a one-shot prompt through whichever coding agent CLI is installed and signed in — Claude Code, Codex, GitHub
-# Copilot or OpenCode, all four of which the dev container installs. agent_prompt gives the agent no tools, so
-# everything it needs is in the prompt; agent_review starts it in a directory to read, and lets it run and write
-# nothing.
+# Runs a one-shot prompt through an installed and signed-in agent. The dev container supports Claude Code,
+# Codex, GitHub Copilot and OpenCode. See _agent_run for the tool restrictions each CLI supports.
 #
 # Variables read:
 #   AGENT_CLI    claude, codex, copilot or opencode; unset or "auto" picks one (see agent_resolve)
@@ -205,7 +203,8 @@ _agent_run() {
             set -- --restricted --strict-mcp-config --setting-sources user --permission-mode dontAsk \
                 --tools "Read,Grep,Glob" "$@" --allowedTools Read Grep Glob
         else
-            set -- --tools "" "$@"
+            set -- --safe-mode --restricted --strict-mcp-config --mcp-config '{"mcpServers":{}}' \
+                --permission-mode dontAsk --tools "" "$@"
         fi
         (cd "$dir" && "$AGENT_BIN" --print "$@") <"$prompt_file" || status=$?
         ;;

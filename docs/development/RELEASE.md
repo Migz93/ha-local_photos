@@ -4,7 +4,7 @@ This document describes the release process for this integration, including auto
 
 ## Overview
 
-Releases are managed with [release-please](https://github.com/googleapis/release-please), which automates version bumping and changelog generation based on [Conventional Commits](https://www.conventionalcommits.org/). An optional local script enhances release notes using GitHub Copilot CLI.
+Releases are managed with [release-please](https://github.com/googleapis/release-please), which automates version bumping and changelog generation based on [Conventional Commits](https://www.conventionalcommits.org/). An optional local script enhances release notes using a coding agent CLI.
 
 **Version source of truth:** `custom_components/local_photos/manifest.json`
 
@@ -79,16 +79,21 @@ Reads the canonical version from `manifest.json`.
 
 ### `script/release-notes`
 
-Generates AI-enhanced release notes using [GitHub Copilot CLI](https://docs.github.com/en/copilot/concepts/agents/about-copilot-cli). Requires an active Copilot subscription and `gh auth login`.
+Generates release notes using a signed-in coding agent CLI and `gh auth login`. Automatic `--apply` uses
+Claude Code with tools and customizations disabled. With another agent, preview the notes and use `--apply-file`
+after reviewing the generated text.
 
 ```bash
 # Preview enhanced notes on stdout
 ./script/release-notes
 
-# Update the open release-please PR body with enhanced notes
+# Generate with tool-free Claude Code and update the open release PR
 ./script/release-notes --apply
 
-# Launch Copilot CLI interactively with context pre-loaded
+# Apply release notes you have already reviewed
+./script/release-notes --apply-file NOTES
+
+# Launch the selected agent interactively with context pre-loaded
 ./script/release-notes --interactive
 ```
 
@@ -101,10 +106,11 @@ Generates AI-enhanced release notes using [GitHub Copilot CLI](https://docs.gith
    - Net file change list as source of truth
    - Revert commit list as chronology hints
 3. Builds a detailed prompt with audience definition, jargon rules, and file impact guidance
-4. Sends everything to Copilot CLI via stdin (avoids shell-escaping issues with large prompts)
+4. Sends the assembled prompt to the selected agent CLI
 5. Outputs the result to stdout, or updates the PR body with `--apply`
 
-**`--interactive` mode** writes the full prompt and context to `.ai-scratch/release-notes-context.md` and launches a Copilot CLI session so you can iterate manually.
+**`--interactive` mode** writes the prompt and context to `.agents/scratch/release-notes-context.md` and launches
+the selected agent so you can iterate manually.
 
 **Skip a commit from release notes** by adding a trailer to the commit body:
 
@@ -144,11 +150,11 @@ git commit -m "feat(sensor): add air quality index sensor"
 # 1. Check the current version and open PR
 ./script/version
 
-# 2. Generate Copilot-enhanced release notes and review
+# 2. Generate enhanced release notes and review the text
 ./script/release-notes
 
-# 3. If satisfied, update the PR body
-./script/release-notes --apply
+# 3. Apply the reviewed notes from a Markdown file
+./script/release-notes --apply-file NOTES
 
 # 4. Merge the PR on GitHub
 ```
@@ -189,4 +195,4 @@ If you want an additional manual gate, you can add a required label (`release: a
 | `.release-please-manifest.json`        | Current version tracked by release-please                        |
 | `CHANGELOG.md`                         | Auto-generated, committed in the same commit as the version bump |
 | `script/version`                       | Local version utility                                            |
-| `script/release-notes`                 | Local Copilot CLI release notes enhancement                      |
+| `script/release-notes`                 | Local coding agent release note enhancement                      |
