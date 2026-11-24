@@ -245,7 +245,7 @@ ha_envs_remove() {
 
 # Delete every version no slot points at, unfinished builds included, then every downloaded Python no venv uses.
 ha_envs_prune() {
-    local root dir link target
+    local root dir link target builds
     root="$(ha_venv_preferred_path)"
     local -A keep=()
     for link in "$root"/slots/*; do
@@ -259,8 +259,12 @@ ha_envs_prune() {
         rm -rf "$dir"
     done
     [[ -d $(ha_envs_python_dir) ]] || return 0
-    UV_PYTHON_INSTALL_DIR="$(ha_envs_python_dir)" uv python list --only-installed --python-preference only-managed \
-        --output-format json 2>/dev/null | python3 -c '
+    if ! builds=$(UV_PYTHON_INSTALL_DIR="$(ha_envs_python_dir)" uv python list --only-installed \
+        --python-preference only-managed --output-format json 2>/dev/null); then
+        log_warning "Could not list installed Python builds — skipping Python cleanup"
+        return 0
+    fi
+    python3 -c '
 import json, os, sys
 homes = set()
 for name in os.listdir(sys.argv[1]) if os.path.isdir(sys.argv[1]) else ():
@@ -276,9 +280,10 @@ except ValueError:
 for build in builds:
     if os.path.realpath(os.path.dirname(build["path"])) not in homes:
         print(build["key"])
-' "$root/versions" | while read -r build; do
+' "$root/versions" <<<"$builds" | while read -r build; do
         log_step "Removing the unused Python $build"
-        uv python uninstall --quiet --install-dir "$(ha_envs_python_dir)" "$build"
+        uv python uninstall --quiet --install-dir "$(ha_envs_python_dir)" "$build" ||
+            log_warning "Could not remove unused Python $build"
     done
     return 0
 }
