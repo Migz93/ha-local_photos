@@ -230,6 +230,10 @@ ha_envs_remove() {
         log_error "$slot is the active environment — run: script/ha-env use minimum"
         return 1
     fi
+    if [[ $slot == "$(ha_running_slot)" ]]; then
+        log_error "$slot is used by a running Home Assistant instance — stop it first"
+        return 1
+    fi
     rm -f "$(ha_venv_preferred_path)/slots/$slot" "$(ha_venv_preferred_path)/slots/.$slot.refreshed"
 }
 
