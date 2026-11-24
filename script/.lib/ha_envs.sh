@@ -151,17 +151,21 @@ ha_envs_install() {
     return "$status"
 }
 
-# ha_envs_build VERSION — create versions/VERSION if needed and bring its packages up to date. A venv that never
+# ha_envs_build VERSION RUNNING_VERSION — create versions/VERSION if needed and update its packages. A venv that never
 # completed is rebuilt from scratch; a complete one that fails to update is kept as it was.
 ha_envs_build() {
-    local version="$1" dir inputs
+    local version="$1" running_version="$2" dir inputs
     dir="$(ha_venv_preferred_path)/versions/$1"
     inputs="$(ha_envs_inputs "$version")"
+    if [[ -f $dir/.ha-version && -f $dir/.ha-inputs && $(<"$dir/.ha-inputs") == "$inputs" ]]; then
+        log_info "Home Assistant $version is up to date"
+        return 0
+    fi
+    if [[ $version == "$running_version" ]]; then
+        log_warning "Home Assistant $version is in use — stop it before updating the shared environment"
+        return 2
+    fi
     if [[ -f $dir/.ha-version ]]; then
-        if [[ -f $dir/.ha-inputs && $(<"$dir/.ha-inputs") == "$inputs" ]]; then
-            log_info "Home Assistant $version is up to date"
-            return 0
-        fi
         if ! ha_envs_install "$dir" "$version"; then
             log_warning "Could not update the Home Assistant $version environment — keeping it as it was"
             return 1
@@ -183,13 +187,15 @@ ha_envs_build() {
 # ha_envs_refresh SLOT — resolve the slot, build its version, and point the slot at it only once the build succeeded.
 # The environment a running Home Assistant uses is left as it is, with status 2.
 ha_envs_refresh() {
-    local slot="$1" version="" root
-    if [[ $slot == "$(ha_running_slot)" && -n $(ha_envs_version_of "$slot") ]]; then
+    local slot="$1" version="" root running_slot running_version
+    running_slot=$(ha_running_slot)
+    if [[ $slot == "$running_slot" && -n $(ha_envs_version_of "$slot") ]]; then
         log_warning "$slot: left as it is while Home Assistant runs on it — stop it first, then run this again"
         return 2
     fi
     ha_envs_resolve "$slot" version || return 1
-    ha_envs_build "$version" || return 1
+    running_version=$(ha_envs_version_of "$running_slot")
+    ha_envs_build "$version" "$running_version" || return $?
     root="$(ha_venv_preferred_path)"
     mkdir -p "$root/slots"
     ln -sfn "../versions/$version" "$root/slots/$slot"

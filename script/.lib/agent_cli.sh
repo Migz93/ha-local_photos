@@ -185,12 +185,11 @@ agent_resolve() {
 
 # _agent_run MODE DIR FILE: send the prompt in FILE through the chosen CLI and print only the agent's answer.
 #
-# MODE "prompt" runs the CLI in an empty directory (Copilot, which would ask to trust it, with
-# --no-custom-instructions instead) and without tools, so it loads none of this repository's agent instructions or
-# session hooks. MODE "review" runs it in DIR with its agent instructions and lets it read, but run and write
-# nothing: no shell, since git and rg take options that write files or run commands, and for Claude Code none of the
-# project's settings or MCP servers, which would widen that. The caller writes the diff into a file in DIR, and
-# makes DIR no git checkout, so no session-start hook acts there.
+# MODE "prompt" uses an empty directory, except that Copilot uses --no-custom-instructions instead.
+# MODE "review" uses the caller's exported DIR, without Git metadata. Tool restrictions depend on the CLI:
+# Claude allows only Read, Grep and Glob in review mode and disables tools in prompt mode. Copilot denies shell
+# and write tools. Codex uses a read-only sandbox and can still run commands permitted by it. OpenCode uses its
+# plan agent, whose permissions depend on its configuration.
 _agent_run() {
     local mode="$1" dir="$2" prompt_file work answer status=0
     prompt_file="$(cd "$(dirname "$3")" && pwd)/$(basename "$3")"
@@ -236,12 +235,12 @@ _agent_run() {
     return "$status"
 }
 
-# agent_prompt FILE: send the prompt in FILE, with no tools and none of this repository's instructions.
+# agent_prompt FILE: send the prompt in FILE with the selected CLI's prompt-mode settings.
 agent_prompt() {
     _agent_run prompt "" "$1"
 }
 
-# agent_review DIR FILE: run the prompt in FILE inside DIR, reading only, with DIR's agent instructions.
+# agent_review DIR FILE: request a read-only review of DIR with the selected CLI.
 agent_review() {
     _agent_run review "$1" "$2"
 }

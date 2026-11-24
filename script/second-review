@@ -102,8 +102,8 @@ git log -p --no-merges "$base..$head" ${main[@]+"${main[@]}"} >"$export_dir/.sec
         "$base" "$head"
     # shellcheck disable=SC2016  # the backticks are Markdown in the prompt, not a command substitution
     printf '`.second-review.patch` there (`git log -p --no-merges %s..%s %s`).\n' "$base" "$head" "${main[*]-}"
-    printf 'You may read files and cannot run commands: where the brief says to run one, read the patch and check\n'
-    printf 'commands against their documentation instead. Tier: full.\n\n'
+    printf 'Review the exported files without running project commands. Check commands against the patch and\n'
+    printf 'documentation where the brief calls for running them. Tier: full.\n\n'
     printf 'Commit subjects, as claims to check against the diff:\n\n'
     git log --no-merges --format='- %s' "$base..$head" ${main[@]+"${main[@]}"}
 } >"$prompt"
