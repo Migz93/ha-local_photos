@@ -12,7 +12,7 @@
 set -euo pipefail
 
 payload=$(cat)
-[[ $payload == *"pr ready"* ]] || exit 0
+[[ $payload == *gh* && $payload == *ready* ]] || exit 0
 command -v python3 >/dev/null 2>&1 || exit 0
 
 root=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
@@ -42,9 +42,17 @@ try:
     tool_input = json.loads(os.environ["HOOK_PAYLOAD"]).get("tool_input", {})
 except (KeyError, json.JSONDecodeError, AttributeError):
     raise SystemExit
-command = tool_input.get("command", "") if isinstance(tool_input, dict) else ""
+if isinstance(tool_input, str):
+    command = tool_input
+elif isinstance(tool_input, dict):
+    command = tool_input.get("command") or tool_input.get("cmd") or ""
+else:
+    raise SystemExit
+
 if isinstance(command, list):
-    command = " ".join(command)
+    command = shlex.join(str(part) for part in command)
+if not isinstance(command, str):
+    raise SystemExit
 
 for part in re.split(r"&&|\|\||;|\||\n", command):
     try:
