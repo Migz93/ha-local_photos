@@ -90,8 +90,8 @@
           {
             "type": "command",
             "command": "bash \"$(git rev-parse --show-toplevel)/.agents/hooks/pre-push-check.sh\"",
-            "timeout": 10,
-            "statusMessage": "Checking that git's pre-push hook will vet this push…"
+            "timeout": 300,
+            "statusMessage": "Running script/lint-check and script/type-check before push…"
           },
           {
             "type": "command",

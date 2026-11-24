@@ -243,7 +243,7 @@ ha_version_newer() {
 # target_ha_version RESULT_VAR
 #
 # Resolves the Home Assistant version the tooling targets: HA_VERSION when it is
-# set, otherwise the minimum in hacs.json, where YEAR.MONTH.0 stands for the
+# set, otherwise the test pin for the hacs.json release train, falling back to the
 # latest patch of that month.
 #
 # Usage:
@@ -258,7 +258,12 @@ target_ha_version() {
             log_error "HA_VERSION not set and could not be determined from hacs.json"
             return 1
         fi
-        if [[ "$_tha_version" =~ ^[0-9]{4}\.[0-9]+\.0$ ]]; then
+        local _tha_pin
+        _tha_pin=$(ha_test_pin_version)
+        if [[ -n $_tha_pin && $(ha_release_train "$_tha_pin") == "$(ha_release_train "$_tha_version")" ]] &&
+            ! ha_version_newer "$_tha_version" "$_tha_pin"; then
+            _tha_version="$_tha_pin"
+        elif [[ "$_tha_version" =~ ^[0-9]{4}\.[0-9]+\.0$ ]]; then
             _tha_version="${_tha_version%.*}"
         fi
     fi

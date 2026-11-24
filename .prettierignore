@@ -2,6 +2,7 @@
 config/
 !config/configuration.yaml
 custom_components/
+!custom_components/local_photos/
 
 # Auto-generated release files
 CHANGELOG.md

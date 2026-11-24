@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 
-import voluptuous as vol
+import probatio
 
 from custom_components.local_photos.const import (
     CONF_WRITEMETADATA,
@@ -22,7 +22,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 SERVICE_NEXT_MEDIA = "next_media"
 ATTR_MODE = "mode"
 CAMERA_NEXT_MEDIA_SCHEMA = cv.make_entity_service_schema(
-    {vol.Optional(ATTR_MODE): vol.In(SETTING_IMAGESELECTION_MODE_OPTIONS)}
+    {probatio.Optional(ATTR_MODE): probatio.In(SETTING_IMAGESELECTION_MODE_OPTIONS)}
 )
 
 CAMERA_TYPE = CameraEntityDescription(key="album_image", translation_key="album_image")

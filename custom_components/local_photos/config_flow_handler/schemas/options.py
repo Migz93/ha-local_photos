@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import voluptuous as vol
+import probatio
 
 from custom_components.local_photos.const import (
     CONF_ALBUM_ID,
@@ -18,12 +18,12 @@ import homeassistant.helpers.config_validation as cv
 def get_options_folder_schema(
     current_folder_path: str = "",
     current_maximum_file_size: str = SETTING_MAXIMUM_FILE_SIZE_DEFAULT_OPTION,
-) -> vol.Schema:
+) -> probatio.Schema:
     """Return the schema for the options folder path step."""
-    return vol.Schema(
+    return probatio.Schema(
         {
-            vol.Required(CONF_FOLDER_PATH, default=current_folder_path): str,
-            vol.Required(CONF_MAXIMUM_FILE_SIZE, default=current_maximum_file_size): selector.SelectSelector(
+            probatio.Required(CONF_FOLDER_PATH, default=current_folder_path): str,
+            probatio.Required(CONF_MAXIMUM_FILE_SIZE, default=current_maximum_file_size): selector.SelectSelector(
                 selector.SelectSelectorConfig(
                     options=SETTING_MAXIMUM_FILE_SIZE_OPTIONS,
                     translation_key=CONF_MAXIMUM_FILE_SIZE,
@@ -36,11 +36,11 @@ def get_options_folder_schema(
 def get_options_album_schema(
     album_options: dict[str, str],
     current_albums: list[str] | None = None,
-) -> vol.Schema:
+) -> probatio.Schema:
     """Return the schema for the options album selection step."""
-    return vol.Schema(
+    return probatio.Schema(
         {
-            vol.Required(CONF_ALBUM_ID, default=current_albums or ["ALL"]): cv.multi_select(album_options),
+            probatio.Required(CONF_ALBUM_ID, default=current_albums or ["ALL"]): cv.multi_select(album_options),
         }
     )
 

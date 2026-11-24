@@ -3,14 +3,15 @@ version: 2
 updates:
   - package-ecosystem: "devcontainers"
     directory: "/"
+    assignees:
+      - Migz93
     schedule:
       interval: "weekly"
       day: "monday"
     commit-message:
       prefix: "chore(deps)"
     cooldown:
-      semver-patch-days: 3
-      semver-minor-days: 7
+      default-days: 7
     groups:
       # Bundle all minor/patch feature updates into a single PR; major updates stay separate
       devcontainer-features:
@@ -21,6 +22,8 @@ updates:
 
   - package-ecosystem: "github-actions"
     directory: "/"
+    assignees:
+      - Migz93
     schedule:
       interval: "weekly"
       day: "monday"
@@ -43,6 +46,8 @@ updates:
 
   - package-ecosystem: "pip"
     directory: "/"
+    assignees:
+      - Migz93
     # The integration's runtime requirements live in manifest.json as well, which Dependabot cannot read.
     # Renovate (.github/renovate.json) raises both files together; without it they are bumped by hand.
     exclude-paths:
@@ -78,6 +83,8 @@ updates:
 
   - package-ecosystem: "npm"
     directory: "/"
+    assignees:
+      - Migz93
     schedule:
       interval: "weekly"
       day: "monday"

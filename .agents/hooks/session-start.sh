@@ -57,6 +57,11 @@ if [[ ! -x script/setup/bootstrap ]]; then
     exit 0
 fi
 
+# Keep project dependency setup inside a disposable container or CI.
+if [[ ! -f /.dockerenv && -z ${REMOTE_CONTAINERS:-} && -z ${CODESPACES:-} && -z ${GITHUB_ACTIONS:-} ]]; then
+    exit 0
+fi
+
 # shellcheck source=script/.lib/output.sh
 source script/.lib/output.sh
 

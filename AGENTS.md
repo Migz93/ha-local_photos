@@ -691,6 +691,12 @@ See `.github/copilot-instructions.md` for detailed workflow guidance.
 - For file edits, use `multi_replace_string_in_file` when making multiple changes
 - Terminal commands must always be sequential to see output before next command
 
+### Agent workflow plugins
+
+The pinned `ha-custom-integration-skills` marketplace provides optional interviewing, planning and change review.
+Run `script/setup/agent-plugins --check` to verify the shared settings agree. Use [`blueprint-decisions`](.agents/skills/blueprint-decisions/SKILL.md) for local decision records.
+The project's cross-AI and CodeRabbit review gates still apply.
+
 ## Weekly Template Sync PRs
 
 This project receives weekly automated PRs titled **"chore: sync updates from integration blueprint template"** that pull upstream changes from [`jpawlowski/hacs.integration_blueprint`](https://github.com/jpawlowski/hacs.integration_blueprint).

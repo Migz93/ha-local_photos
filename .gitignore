@@ -7,6 +7,7 @@ config/*
 
 # Custom components (Marketplace- or HACS-installed dependencies and dev symlinks)
 custom_components/*
+!custom_components/local_photos/
 !custom_components/.gitignore
 
 # Virtual environment and shell configuration (when HOME is set to workspace)
@@ -75,3 +76,6 @@ Thumbs.db
 [Dd]esktop.ini
 *~
 *.swp
+
+# Private local instructions and agent permissions
+LOCAL.md
