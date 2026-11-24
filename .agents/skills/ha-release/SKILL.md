@@ -49,14 +49,13 @@ and never ships a release" — don't just name the type and cite the instruction
 
 ## What each type does to the release
 
-| Type                                      | Changelog section       | Version effect (pre-1.0)           |
-| ----------------------------------------- | ----------------------- | ---------------------------------- |
-| `feat`                                    | 🎉 What's new           | patch bump (`0.1.0` → `0.1.1`)     |
-| `fix`                                     | 🐛 Fixed                | patch bump                         |
-| `perf`                                    | ⚡ More reliable        | patch bump                         |
-| `build`                                   | 📦 Updated dependencies | patch bump                         |
-| `feat!` / `BREAKING CHANGE:`              | What's new + notice     | **minor** bump (`0.1.0` → `0.2.0`) |
-| `refactor`, `chore`, `docs`, `test`, `ci` | hidden                  | no release                         |
+| Type                                               | Changelog section | Version effect (pre-1.0)           |
+| -------------------------------------------------- | ----------------- | ---------------------------------- |
+| `feat`                                             | Features          | patch bump (`0.1.0` → `0.1.1`)     |
+| `fix`                                              | Bug Fixes         | patch bump                         |
+| `perf`                                             | Performance       | patch bump                         |
+| `feat!` / `BREAKING CHANGE:`                       | Features + notice | **minor** bump (`0.1.0` → `0.2.0`) |
+| `refactor`, `chore`, `docs`, `test`, `ci`, `build` | hidden or omitted | no release                         |
 
 After `1.0.0`, standard SemVer applies: `feat` → minor, `fix` → patch, breaking → major.
 
@@ -84,16 +83,15 @@ commits on main → release-please opens/updates "chore(main): release X.Y.Z"
 `manifest.json` → `version` is the source of truth and is bumped inside the release PR by release-please
 (`release-please-config.json` → `extra-files`). Never edit it by hand. The Marketplace depends on that: it offers the tag of the latest published GitHub Release — a bare tag is not enough — expects
 `version` to equal it, and shows the release body as the notes in the update dialog. It joins the notes of every
-release since the installed one only within the last five releases, so the `release-asset` job adds a link to the
-changelog to each body.
+release since the installed one only within the last five releases. Workflows with a `release-asset` job add
+a link to the changelog in each release body.
 
-**Text on every release** — a support link, a standing notice — goes into `.github/release-notes/header.md` or
-`footer.md`; the `release-asset` job puts it around each body, and `CHANGELOG.md` never sees it. Not into
-`release-please.yml`, which template sync replaces, nor into `changelog-sections` or a `release-notes` hook, which both
-land in `CHANGELOG.md`. A support link takes its handle from `.github/FUNDING.yml`. Keep it to a line: the dialog
+For **text on every release**, such as a support link or standing notice, add an optional
+`.github/release-notes/header.md` or `footer.md`. The `release-asset` job, where enabled, adds those files to the
+GitHub release body when present. Template sync can replace `release-please.yml`. The `changelog-sections`
+setting and the `release-notes` hook affect `CHANGELOG.md`. A support link takes its handle from `.github/FUNDING.yml`. Keep it to a line: the dialog
 repeats it for every release it joins. **How the notes read** — what the integration does, its own jargon, a title —
-goes into `prompt.md` in the same folder, which `script/release-notes` adds to its prompt; edit that file, never the
-template-managed script.
+can be specified in an optional `prompt.md` in the same folder, which `script/release-notes` reads when present.
 
 There is no automatic merge. The developer decides when to release — in batches rather than per change, so a user who
 updates now and then stays inside those five.
@@ -102,7 +100,7 @@ updates now and then stays inside those five.
 
 **A beta is a GitHub pre-release, or it is not a beta.** The Marketplace never reads the tag: it offers a release
 marked as pre-release only to users who turned on the repository's **Pre-release** switch, and every other release to
-everyone. The `release-asset` job marks the release as a pre-release when its version has a pre-release part.
+everyone. If the workflow includes the `release-asset` job, it marks a tag with a pre-release version accordingly.
 
 release-please plans a normal release unless told otherwise. Set the version with a footer as the **last line of the
 description** of the pull request that should trigger it — squash merging makes the description the commit body:

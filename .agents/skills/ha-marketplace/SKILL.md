@@ -8,8 +8,8 @@ description: >-
   the update show up", "keep files across updates", "rename or archive the repository", or when editing hacs.json,
   brand/ or the README's Marketplace view. SYMPTOMS — load this if you are about to: open the hacs/default pull
   request yourself; add an `ignore` to the HACS action to make it pass; delete a repository that is in the catalog;
-  delete an old release; write user data into the integration folder; remove `zip_release`; ship Home Assistant's own
-  logo as the brand icon; or raise `homeassistant` in hacs.json without naming the new minimum in the changelog.
+  delete an old release; store data in the integration folder; remove `zip_release` from a ZIP-based release;
+  use the Home Assistant logo; or raise the Home Assistant minimum without naming it in the changelog.
 ---
 
 # Publish through the Marketplace
@@ -67,30 +67,31 @@ curl -s https://data-v2.hacs.xyz/integration/data.json | jq -r '.[] | select(.do
 ## 2. `hacs.json` — when to touch it
 
 The Marketplace reads `hacs.json` from the root **for every version it installs**, so a key applies per release.
-The template ships `name`, `homeassistant`, `hacs`, `zip_release`, `filename` (`initialize.sh` sets the domain in
-it) and `hide_default_branch`; most integrations never need more. Full key table:
+This integration sets `name`, `homeassistant`, and `hacs` and installs from published source releases.
+The template also supports optional ZIP-based installs. Full key table:
 [`references/checks.md`](references/checks.md).
 
 - **`homeassistant`** — the minimum version for _this_ release. The Marketplace does not offer the release to an
   older Home Assistant and shows those users earlier versions instead. Raise it in the release whose code first needs
   the newer version, never ahead of it. Raising it is not breaking, but older installs silently stop getting fixes,
   so the changelog names it ([`ha-breaking-changes`](../ha-breaking-changes/SKILL.md#1-recognise-it));
-  `script/ha-version-sync` then makes the pytest plugin pin follow ([`ha-modern-apis`](../ha-modern-apis/SKILL.md)). A `b0` suffix (`"2026.11.0b0"`) also admits that
+  `script/ha-version-sync` then checks that the pytest plugin pin uses the same release train ([`ha-modern-apis`](../ha-modern-apis/SKILL.md)). A `b0` suffix (`"2026.11.0b0"`) also admits that
   release's betas. Only checked for repositories with releases.
 - **`persistent_directory`** — an update replaces the whole integration folder; this names one subfolder the
   Marketplace moves aside and restores. ❌ Do not design for it: user data and runtime state belong in
   `homeassistant.helpers.storage.Store` (under `config/.storage/`), which survives updates and is covered by
   backups. Reach for it only for files a library insists on finding inside the integration folder.
-- **`zip_release` / `filename`** — ✅ set, and keep both. release-please creates each release as a draft (`draft`,
-  `force-tag-creation` in `release-please-config.json`); the `release-asset` job in `release-please.yml` builds the ZIP
+- **`zip_release` / `filename`** — optional and currently unset. If an integration opts into ZIP installs, configure
+  release-please to create drafts (`draft` and `force-tag-creation` in `release-please-config.json`). The
+  blueprint's `release-asset` job in `release-please.yml` builds the ZIP
   with `script/build` (the tracked files of `custom_components/<domain>/` at the archive root, the build hooks, a check
   that `manifest.json` carries the tag's version), attaches it under the name read from `filename`, and only then
   publishes. The Marketplace installs from that asset, for a catalog version without a GitHub connection.
-  Only an asset carries a GitHub download count; a source archive does not. Removing the keys breaks installs; the
-  file name lives only in `hacs.json`, never a second time in the workflow. When the job fails, the release stays a
+  Only an asset carries a GitHub download count; a source archive does not. Keep both keys for an asset-based
+  release and keep the file name in `hacs.json`. When the job fails before publication, the ZIP release stays a
   draft: run the workflow by hand with the tag — "Re-run all jobs" creates no release and skips the job.
 - **`hacs`** — the minimum HACS version. The Marketplace reads it but never compares it; HACS still does, so keep it.
-- **`hide_default_branch`** — ✅ set, and keep it while `zip_release` is set. With `zip_release` every install
+- **`hide_default_branch`** — currently unset. Set it when enabling `zip_release`. With `zip_release` every install
   fetches the release asset, even for the default branch — `releases/download/main/<filename>`, which never exists —
   so offering the branch offers a version that cannot install (`_async_download_version` in the Marketplace). The
   key only hides the branch in the version menu; before the first release the Marketplace still falls back to the
@@ -177,7 +178,8 @@ between two markers; GitHub does not render HTML comments, so it reads as before
 - ❌ **Never delete a repository that is in the catalog without the removal request first.** Deleting a listed
   repository bars the owner from adding any repository to the catalog in the future. Archive it, or file the request and wait for it to be handled.
 - ❌ Do not open the hacs/default pull request or the removal issue yourself; draft them for the developer.
-- ❌ Do not add `ignore` to the HACS action, delete old releases, or remove `zip_release`/`filename`.
+- ❌ Do not add `ignore` to the HACS action, delete old releases, or remove `zip_release`/`filename` from an
+  asset-based release.
 - ❌ Do not store user data inside `custom_components/<domain>/`.
 - ❌ Do not claim the integration is "in HACS" or "in the Marketplace" before the catalog pull request is merged —
   until then it installs only as a custom repository.

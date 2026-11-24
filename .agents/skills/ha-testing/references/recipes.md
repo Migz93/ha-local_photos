@@ -1,6 +1,7 @@
 # Test recipes
 
-Variants of the shared fixtures and patterns in [`../SKILL.md`](../SKILL.md) that only some integrations need.
+Optional fixture recipes for the patterns in [`../SKILL.md`](../SKILL.md). Check `tests/conftest.py` for the fixtures
+the repository already provides.
 
 ## `mock_api` for a third-party library client
 

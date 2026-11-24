@@ -37,7 +37,10 @@ scaffolding and the judgement calls.
 
 ## The shared fixtures: `tests/conftest.py`
 
-Use these by name instead of defining a variant per file — every existing test depends on them:
+Check the repository's `tests/conftest.py` for fixtures, and reuse any it defines. Custom integration tests that
+need the plugin's `enable_custom_integrations` fixture can request it directly or through a shared autouse fixture.
+The examples below use these fixture names. Add the fixtures to `tests/conftest.py` if you adopt those examples and
+the repository doesn't already provide them:
 
 - `config_entry` — a `MockConfigEntry`, not yet added to `hass`.
 - `mock_api` — the `AsyncMock` that stands in for the data source; set `return_value` or `side_effect` per test.
@@ -181,8 +184,8 @@ trigger, and is `None` again once the condition clears.
 `pyproject.toml` fails the suite on a Python `DeprecationWarning`, which catches libraries. Home Assistant's own
 deprecations — a removed helper, a deprecated constant, a wrong-thread call — are **logged** instead:
 `Detected that custom integration '<domain>' …` from `report_usage()`, or `The deprecated … was used from <domain>`
-from the deprecation helpers. The autouse `fail_on_deprecation_report` fixture in `tests/conftest.py` fails every test
-whose `caplog` holds such a record. A path no test reaches still needs the runtime log — see
+from the deprecation helpers. Use `caplog` to check exercised paths for these messages, or reuse an autouse
+`fail_on_deprecation_report` fixture if the repository defines one. A path no test reaches still needs the runtime log — see
 [`ha-modern-apis`](../ha-modern-apis/SKILL.md#fixing-a-deprecation-warning). Fix the cause; never filter the message.
 
 The one exception to "warnings are errors" is a warning **Home Assistant Core raises about its own use of a library it
