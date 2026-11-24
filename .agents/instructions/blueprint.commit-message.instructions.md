@@ -28,17 +28,17 @@ BREAKING CHANGE: Description (required if breaking, triggers major version bump)
 
 ## Types
 
-| Type       | When to use                                                                                    |
-| ---------- | ---------------------------------------------------------------------------------------------- |
-| `feat`     | User-facing new functionality (new sensor, service, config option)                             |
-| `fix`      | Bug fix for user-facing issues                                                                 |
-| `build`    | A new version of a library in `manifest.json` → `requirements` — users get it with the release |
-| `chore`    | Dev tooling, development dependencies, devcontainer — NOT visible to users                     |
-| `refactor` | Code restructuring without functional change                                                   |
-| `docs`     | Documentation only                                                                             |
-| `test`     | Adding or fixing tests                                                                         |
-| `ci`       | CI/CD pipeline changes                                                                         |
-| `perf`     | Performance improvements                                                                       |
+| Type       | When to use                                                                                  |
+| ---------- | -------------------------------------------------------------------------------------------- |
+| `feat`     | User-facing new functionality (new sensor, service, config option)                           |
+| `fix`      | Bug fix for user-facing issues                                                               |
+| `build`    | Build or dependency maintenance. Follow the release policy for user-facing dependency fixes. |
+| `chore`    | Dev tooling, development dependencies, devcontainer — NOT visible to users                   |
+| `refactor` | Code restructuring without functional change                                                 |
+| `docs`     | Documentation only                                                                           |
+| `test`     | Adding or fixing tests                                                                       |
+| `ci`       | CI/CD pipeline changes                                                                       |
+| `perf`     | Performance improvements                                                                     |
 
 Use `feat!` or `fix!` (with `!`) as shorthand for breaking changes when the summary line is sufficient. Always add the `BREAKING CHANGE:` footer for clarity.
 
