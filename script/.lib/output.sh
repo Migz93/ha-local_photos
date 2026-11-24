@@ -135,7 +135,7 @@ ha_current_slot() {
 
 # The project devcontainer mounts config as tmpfs, including config for optional environments.
 ha_extra_config_root() {
-    if mountpoint -q config && [[ $(stat -f -c %T config) == tmpfs ]]; then
+    if command -v mountpoint >/dev/null && mountpoint -q config && [[ $(stat -f -c %T config 2>/dev/null) == tmpfs ]]; then
         printf 'config/.ha-envs'
     else
         printf '.local/ha-config'
