@@ -1,5 +1,16 @@
 # Changelog
 
+## [3.0.0](https://github.com/Migz93/ha-local_photos/compare/v2.4.1...v3.0.0) (2026-11-24)
+
+
+### ⚠ BREAKING CHANGES
+
+* Home Assistant 2026.11.0 or newer is required to install this release.
+
+### Maintenance
+
+* sync updates from integration blueprint template ([#52](https://github.com/Migz93/ha-local_photos/issues/52)) ([70f5cd4](https://github.com/Migz93/ha-local_photos/commit/70f5cd4628c36bbac98b2778d07a68f68852cb41))
+
 ## [2.4.1](https://github.com/Migz93/ha-local_photos/compare/v2.4.0...v2.4.1) (2026-10-02)
 
 
