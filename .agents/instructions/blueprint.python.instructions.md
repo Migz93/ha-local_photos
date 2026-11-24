@@ -161,8 +161,11 @@ See [Integration Setup Failures](https://contributors.home-assistant.io/core/int
   `PERCENTAGE` or the `CONCENTRATION_*` constants
   ([`deprecations.md`](../skills/ha-modern-apis/references/deprecations.md#entities))
 - Construct compound units if no combined constant exists: `f"{UnitOfLength.METERS}/{UnitOfTime.SECONDS}"`
-- **Do not convert units yourself.** Set `native_unit_of_measurement` and let Home Assistant convert according to
-  `hass.config.units`. `hass.config.language` and `.country` are there too, when an API needs a locale.
+- **Do not convert units Home Assistant can convert.** Set `native_unit_of_measurement` and let Home Assistant convert
+  according to `hass.config.units`. Where the device class has no converter — money, currency subunits, prices per
+  unit — converting is the integration's job
+  ([`ha-user-experience`](../skills/ha-user-experience/SKILL.md#units-users-think-in)). `hass.config.language`,
+  `.country` and `.currency` are there too, when an API needs a locale.
 
 **Time and Timestamps:**
 
@@ -193,9 +196,8 @@ See [Integration Setup Failures](https://contributors.home-assistant.io/core/int
 
 ## Imports
 
-Ruff orders them. **Standard HA aliases:** `cv`, `dr`, `er`, `dt_util`. This project supports Home Assistant 2026.8,
-so schemas retain `import voluptuous as vol`. The plain `import probatio` examples (`probatio.Schema`,
-`probatio.Required`, …) require Home Assistant 2026.9+ and an approved minimum-version increase — see
+Ruff orders them. **Standard HA aliases:** `cv`, `dr`, `er`, `dt_util`. Schemas use a plain `import probatio`
+(`probatio.Schema`, `probatio.Required`, …), not `import voluptuous as vol` — see
 [`ha-modern-apis`](../skills/ha-modern-apis/references/deprecations.md#schema-validation--voluptuous-replaced-by-probatio).
 
 **A relative import may not reach into a parent package.** Ruff's `TID252` runs with the default

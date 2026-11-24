@@ -108,7 +108,9 @@ If a developer requests something that contradicts these instructions:
 2. **Developer Documentation** - Architecture and design decisions (`docs/development/`)
 3. **User Documentation** - End-user guides (`docs/user/`)
 
-**AI Planning:** Use `.ai-scratch/` for temporary notes (never committed)
+Read and update the existing architecture decision log at `docs/development/DECISIONS.md`. A move to per-decision files requires maintainer approval.
+
+**AI Planning:** Use `.agents/scratch/` for temporary notes (never committed)
 
 **Rules:**
 
@@ -690,6 +692,12 @@ See `.github/copilot-instructions.md` for detailed workflow guidance.
 - After gathering context in parallel, provide brief progress update before proceeding
 - For file edits, use `multi_replace_string_in_file` when making multiple changes
 - Terminal commands must always be sequential to see output before next command
+
+### Agent workflow plugins
+
+The pinned `ha-custom-integration-skills` marketplace provides optional interviewing, planning and change review.
+Run `script/setup/agent-plugins --check` to verify the shared settings agree. Use [`blueprint-decisions`](.agents/skills/blueprint-decisions/SKILL.md) for local decision records.
+The project's cross-AI and CodeRabbit review gates still apply.
 
 ## Weekly Template Sync PRs
 

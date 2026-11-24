@@ -50,19 +50,12 @@ Every step method must return one of these result types (see [Data Entry Flow do
   - While the task is still running, call `async_show_progress` again — never start a second task
 
 **Always pass `step_id`** to `async_show_form`, `async_show_menu`, `async_show_progress` and `async_external_step`:
-the name of the step method you are in, without `async_step_`. Leaving it out is deprecated (HA 2026.11+), and the
+the name of the step method you are in, without `async_step_`. Leaving it out is deprecated, and the
 inferred ID is wrong whenever one step method calls another.
 
 ### Form Schemas
 
-**Supported baseline:** This project supports Home Assistant 2026.8 and keeps `import voluptuous as vol` for schemas.
-Examples using `probatio` require Home Assistant 2026.9+; do not copy those imports or newer validators into code
-that must support 2026.8. Keep the existing `vol` schemas and validators until a minimum-version increase is approved.
-Do not add `probatio` as an integration requirement to work around the baseline.
-
-The `probatio` examples below describe Home Assistant 2026.9+ APIs. For the supported 2026.8 baseline, use the
-corresponding existing `vol.Schema`, `vol.Required`, `vol.Optional` and other shared APIs; `probatio.Port` and
-`probatio.Secret` are newer-only examples, not instructions to change the current schemas.
+Schemas are written with Probatio (`import probatio`), the validation library Home Assistant uses — not voluptuous.
 
 **Simple fields** - `probatio.Required("field"): str`, `probatio.Optional("field", default=value): int`
 
@@ -79,8 +72,8 @@ corresponding existing `vol.Schema`, `vol.Required`, `vol.Optional` and other sh
 - Options most users never need go in a collapsed section. **Never read `self.show_advanced_options`** — it is
   deprecated and always returns `True`.
 
-**Fields that depend on another field (HA 2026.11+)** — `visible=` and the device-class-driven unit selector:
-[`flow-types.md`](../skills/ha-config-flow/references/flow-types.md#fields-that-depend-on-another-field-ha-202611).
+**Fields that depend on another field** — `visible=` and the device-class-driven unit selector:
+[`flow-types.md`](../skills/ha-config-flow/references/flow-types.md#fields-that-depend-on-another-field).
 
 **Schema hygiene:**
 
@@ -254,7 +247,9 @@ Setup failures in `async_setup_entry()` are not this file's scope: see
 
 - Handle only the versions you know — `if entry.version == 1 and entry.minor_version < 2:`. Home Assistant never
   calls it for a **newer major** version (it refuses that entry itself), and a **newer minor** version from a later
-  release must be left alone and `True` returned. A `if entry.version > N: return False` branch is dead code.
+  release must be left alone. A `if entry.version > N: return False` branch is dead code.
+- Return nothing: success is the absence of an exception. A custom integration's `True` still works, but is
+  deprecated.
 - Update via `hass.config_entries.async_update_entry(entry, version=X, minor_version=Y)`
 - On failure, **raise** rather than return `False`: `ConfigEntryNotReady` when retrying later can succeed,
   `ConfigEntryError` when it cannot — the repair that retries the latter:

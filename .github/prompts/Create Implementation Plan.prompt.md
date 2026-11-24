@@ -17,7 +17,7 @@ If not provided, ask for:
 
 ## Implementation Plan Structure
 
-Create a markdown file in `.ai-scratch/plan-[feature-name].md` (never committed) with:
+Create a markdown file in `.agents/scratch/plan-[feature-name].md` (never committed) with:
 
 ### 1. Overview
 
@@ -91,7 +91,7 @@ Break down into logical phases (typically 3-5):
    - Identify all files that need changes
 
 2. **Create Plan:**
-   - Write comprehensive plan in `.ai-scratch/`
+   - Write comprehensive plan in `.agents/scratch/`
    - Get developer confirmation before implementation
    - Adjust based on feedback
 

@@ -3,7 +3,7 @@
 # The normal development container uses its image-provided tools.
 [tools]
 bat = "0.26.1"
-delta = "0.20.1"
+delta = "0.21.2"
 eza = "0.23.5"
 fzf = "0.75.0"
 hyperfine = "2.0.0"

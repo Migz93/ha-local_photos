@@ -95,13 +95,7 @@ require_command() {
 # healthy. Fall back to the other locations, but say so.
 resolve_venv_path() {
     local preferred candidate
-    if [[ -n ${REMOTE_CONTAINERS:-} || -n ${CODESPACES:-} ]]; then
-        preferred="$HOME/ha-venv"
-    elif [[ -n ${GITHUB_ACTIONS:-} ]]; then
-        preferred="${GITHUB_WORKSPACE:-.}/.local/ha-venv"
-    else
-        preferred="$PWD/.local/ha-venv"
-    fi
+    preferred="$(ha_venv_preferred_path)"
 
     if [[ -f "$preferred/bin/activate" ]]; then
         printf '%s' "$preferred"
@@ -120,35 +114,119 @@ resolve_venv_path() {
     return 1
 }
 
-# Activate the Home Assistant virtual environment if not already active.
-# Silently skips when VIRTUAL_ENV is already set (e.g. in CI or nested calls).
+# Print where bootstrap keeps the venv here: a named volume in the dev container, the workspace everywhere else.
+ha_venv_preferred_path() {
+    if [[ -n ${REMOTE_CONTAINERS:-} || -n ${CODESPACES:-} ]]; then
+        printf '%s' "$HOME/ha-venv"
+    elif [[ -n ${GITHUB_ACTIONS:-} ]]; then
+        printf '%s' "${GITHUB_WORKSPACE:-$PWD}/.local/ha-venv"
+    else
+        printf '%s' "$PWD/.local/ha-venv"
+    fi
+}
+
+# Print the active Home Assistant environment (script/ha-env), or nothing for a venv without environments.
+ha_current_slot() {
+    local venv_path link
+    venv_path="$(resolve_venv_path 2>/dev/null)" || return 0
+    link="$(readlink "$venv_path/current" 2>/dev/null)" || return 0
+    printf '%s' "${link##*/}"
+}
+
+# The project devcontainer mounts config as tmpfs, including config for optional environments.
+ha_extra_config_root() {
+    if command -v mountpoint >/dev/null && mountpoint -q config && [[ $(stat -f -c %T config 2>/dev/null) == tmpfs ]]; then
+        printf 'config/.ha-envs'
+    else
+        printf '.local/ha-config'
+    fi
+}
+
+# Whether a local Home Assistant runs in any environment: one holds the lock on its config directory's run lock.
+ha_running() {
+    local extra_config_root
+    extra_config_root=$(ha_extra_config_root)
+    python3 - config/.ha_run.lock "$extra_config_root"/*/.ha_run.lock <<'PY'
+import fcntl, sys
+for name in sys.argv[1:]:
+    try:
+        with open(name, "a") as handle:
+            fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        sys.exit(0)
+    except OSError:
+        continue
+sys.exit(1)
+PY
+}
+
+# Print the environment a running Home Assistant uses — from the record script/develop writes, which stays right after
+# script/ha-env use --force — or nothing when none runs.
+ha_running_slot() {
+    ha_running || return 0
+    local slot
+    slot=$(jq -r '.slot // empty' .local/ha-develop.json 2>/dev/null) || slot=""
+    printf '%s' "${slot:-$(ha_current_slot)}"
+}
+
+# Print who runs this script: an agent where the agent says so in its environment, the developer otherwise.
+ha_actor() {
+    if [[ -n ${AI_AGENT:-} ]]; then
+        printf 'agent (%s)' "${AI_AGENT%%_*}"
+    elif [[ -n ${CLAUDECODE:-} ]]; then
+        printf 'agent (claude-code)'
+    else
+        printf 'developer'
+    fi
+}
+
+# Print the config directory of the active Home Assistant environment, relative to the repository root:
+# config/ for minimum (and for a venv without environments), its own directory for every other one.
+ha_config_dir() {
+    local slot
+    slot="$(ha_current_slot)"
+    case "$slot" in
+    "" | minimum) printf 'config' ;;
+    *) printf '%s/%s' "$(ha_extra_config_root)" "$slot" ;;
+    esac
+}
+
+# Point VIRTUAL_ENV and PATH at the venv root, whose links follow script/ha-env use; bin/activate would pin the
+# version directory behind them, and an activation that names one is moved back to the root.
+_use_venv() {
+    export VIRTUAL_ENV="$1" PATH="$1/bin:$PATH" VIRTUAL_ENV_DISABLE_PROMPT=1
+    unset PYTHONHOME
+    hash -r
+}
+
+# Activate the Home Assistant virtual environment if not already active, and export HA_CONFIG_DIR for it.
 activate_venv() {
-    if [[ -n ${VIRTUAL_ENV:-} ]]; then
+    export HA_CONFIG_DIR
+    HA_CONFIG_DIR="$(ha_config_dir)"
+    if [[ -n ${VIRTUAL_ENV:-} && $VIRTUAL_ENV != */versions/* ]]; then
         return 0
     fi
     local venv_path
     if ! venv_path="$(resolve_venv_path)"; then
         if [[ "$(run_state bootstrap)" == "running" ]]; then
-            log_error "The development environment is still being set up — wait for .local/bootstrap.status to change, then rerun this command"
+            log_error "The development environment is still being set up — wait for .local/bootstrap.status to change, progress is in .local/bootstrap.log"
         else
             log_error "Virtual environment not found. Run: script/setup/bootstrap"
         fi
         exit 1
     fi
     log_header "Activating virtual environment"
-    # shellcheck source=/dev/null
-    source "$venv_path/bin/activate"
+    _use_venv "$venv_path"
 }
 
 # Like activate_venv, for a script that needs the venv only for optional extras: carries on without one.
 activate_venv_if_present() {
-    if [[ -n ${VIRTUAL_ENV:-} ]]; then
+    if [[ -n ${VIRTUAL_ENV:-} && $VIRTUAL_ENV != */versions/* ]]; then
         return 0
     fi
     local venv_path
     venv_path="$(resolve_venv_path)" || return 0
-    # shellcheck source=/dev/null
-    source "$venv_path/bin/activate"
+    _use_venv "$venv_path"
 }
 
 # Run a user-defined hook script if it exists.

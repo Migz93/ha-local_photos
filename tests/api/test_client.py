@@ -10,7 +10,7 @@ from unittest.mock import patch
 
 from PIL import Image
 import pytest
-from pytest_homeassistant_custom_component.common import MockConfigEntry
+from pytest_homeassistant.common import MockConfigEntry
 
 from custom_components.local_photos.api import LocalPhotosDirectoryNotFoundError, LocalPhotosManager, MediaItem
 from custom_components.local_photos.const import CONF_FOLDER_PATH, CONF_MAXIMUM_FILE_SIZE, DOMAIN

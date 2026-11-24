@@ -49,6 +49,8 @@ markers = [
 filterwarnings = [
     # Treat warnings as errors to catch issues early
     "error",
+    # The Home Assistant test plugin imports this Core HTTP subclass during startup.
+    "ignore:^Inheritance class HomeAssistantApplication from web[.]Application is discouraged$:DeprecationWarning",
     # Ignore specific warnings from third-party libraries as needed
     # "ignore:.*custom_components.* is using deprecated.*:DeprecationWarning",
 ]
@@ -246,7 +248,6 @@ ignore = [
 
 [tool.ruff.lint.flake8-import-conventions.extend-aliases]
 # Commonly used Home Assistant imports
-voluptuous = "vol"
 "homeassistant.helpers.config_validation" = "cv"
 "homeassistant.helpers.device_registry" = "dr"
 "homeassistant.helpers.entity_registry" = "er"

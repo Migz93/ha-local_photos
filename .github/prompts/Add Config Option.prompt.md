@@ -21,9 +21,9 @@ If not provided, ask for:
 **Schema Definition:**
 
 - Add to appropriate schema in `config_flow_handler/schemas/`
-- Use voluptuous validators from `homeassistant.helpers.config_validation as cv`
+- Build schemas with `probatio` and use Home Assistant validators from `homeassistant.helpers.config_validation as cv`
 - Use selectors for better UI (BooleanSelector, NumberSelector, etc.)
-- Set appropriate default values with `vol.Optional()`
+- Set appropriate default values with `probatio.Optional()`
 
 **Config Flow Logic:**
 

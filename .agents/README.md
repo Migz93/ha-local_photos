@@ -82,6 +82,7 @@ knowledge:
 | Generally useful for Home Assistant integrations  | Contribute it upstream — then the blueprint maintains it |
 | Specific to your device, API or product decisions | Write your own skill — no sync configuration needed      |
 | A correction or contradiction of a blueprint file | Take ownership of that file via `.templatesyncignore`    |
+| A lesson from a bug or a repeated correction      | [`blueprint-lessons`](skills/blueprint-lessons/SKILL.md) |
 
 **Add your own skills — nothing to configure.** Template sync is a merge, not a mirror: it only touches files that
 changed _upstream_. A directory the blueprint does not have is never overwritten and never deleted. Create

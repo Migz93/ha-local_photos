@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import datetime
+import datetime as dt
 import logging
 from pathlib import Path
 
@@ -125,7 +125,7 @@ class LocalPhotosCreationTimestamp(SensorEntity):
                 p = Path(file_path)
                 if p.exists():
                     mtime = p.stat().st_mtime
-                    val = datetime.datetime.fromtimestamp(mtime, tz=datetime.UTC)
+                    val = dt.datetime.fromtimestamp(mtime, tz=dt.UTC)
             except Exception as ex:  # noqa: BLE001
                 _LOGGER.warning(
                     "Error getting creation time for %s: %s",

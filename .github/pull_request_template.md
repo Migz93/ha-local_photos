@@ -36,6 +36,7 @@ Fixes #(issue)
 
 - AI assistance: none / limited / substantial / predominant
 - Human review: complete / partial / spot-checked / not performed
+- Agent review: [simplify, fresh-context review, second model — name what ran, or state "not performed"]
 - Automated tests: [describe or state "not performed"]
 - Real-device or service testing: [describe or state "not performed"]
 - Known untested areas or limitations: [describe or state "none known"]

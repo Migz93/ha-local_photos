@@ -40,7 +40,8 @@ Lifecycle hooks beyond `async_added_to_hass` — any platform: [`references/life
 
 Clarify — ask the developer if any of this is missing:
 
-- Which platform (`sensor`, `switch`, …) and whether it already exists in the integration.
+- Which platform (`sensor`, `switch`, …) and whether it already exists in the integration. The most specific one
+  that fits, not a sensor by habit: [`ha-user-experience`](../ha-user-experience/SKILL.md#the-platform-that-fits).
 - Which field of `coordinator.data` backs the entity, and its unit and value range.
 - Whether it is a primary entity or a diagnostic/config entity (`EntityCategory`).
 - For writable platforms: which API method performs the write.
@@ -81,13 +82,15 @@ The mechanical rules are in the instructions file. What this step actually costs
 
 - **`key`** becomes part of the unique ID. Pick it once — renaming it later is a breaking change
   ([`ha-breaking-changes`](../ha-breaking-changes/SKILL.md)).
-- **Primary, diagnostic or config?** Anything a user would not put on a dashboard is
-  `EntityCategory.DIAGNOSTIC`. Useful to few and noisy for everyone else — a signal strength, a value that changes
-  every second — means disabled by default; hidden is something else. Which is which, and why the choice is final:
+- **Primary, diagnostic or config?** The test is in
+  [Entity Categories](../../instructions/blueprint.entities.instructions.md#entity-categories); disabled by default is
+  a separate choice, hidden another. Which is which, and why the choice is final:
   [Disabled and Hidden By Default](../../instructions/blueprint.entities.instructions.md#disabled-and-hidden-by-default).
 - **Is there a matching `device_class`?** Check the platform's enum before inventing units or icons. A device class
   buys unit conversion, correct icons and voice-assistant behaviour for free.
-- **Is the value a measurement?** Then it needs a `state_class`, or the user gets no history.
+- **Is the value a measurement or a total?** Then it needs a `state_class`, or the user gets no long-term statistics.
+- **Who reads it — a dashboard, an automation, or both?** That decides state versus attribute, the icon, and what
+  goes beside the state: [`ha-user-experience`](../ha-user-experience/SKILL.md).
 
 ### 2. Entity class
 
@@ -124,8 +127,8 @@ For a brand-new platform only:
 
 1. Add the `Platform.<NAME>` member to the `PLATFORMS` list in `custom_components/<domain>/__init__.py`
    (keep the list alphabetical).
-2. Nothing else — `async_setup_entry` already forwards with `async_forward_entry_setups(entry, PLATFORMS)` and
-   `async_unload_entry` already tears down with `async_unload_platforms(entry, PLATFORMS)`.
+2. Check that `async_setup_entry` forwards the full `PLATFORMS` list with `async_forward_entry_setups` and
+   `async_unload_entry` unloads the same list. Use `async_unload_platforms_or_raise(entry, PLATFORMS)` for new unload code.
 
 ### 4. Device grouping
 

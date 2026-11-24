@@ -3,6 +3,7 @@
 from pathlib import Path
 import subprocess
 import sys
+import tomllib
 
 import pytest
 
@@ -13,7 +14,7 @@ SHA_NEW = "b" * 40
 
 BASE = {
     "mise.toml": 'min_version = "2026.10.22"\n\n[tools]\npython = "3.14.9"\nuv = "0.14.0"\n',
-    "requirements_test.txt": "pytest-homeassistant-custom-component==0.13.380\n",
+    "requirements_test.txt": "pytest-homeassistant==2026.11.4\n",
     "package.json": '{\n  "devDependencies": {\n    "prettier": "3.9.0",\n    "pyright": "1.1.408"\n  }\n}\n',
     ".devcontainer/devcontainer.json": (
         '{\n  "features": {\n    "ghcr.io/devcontainers-extra/features/mise:1": {\n'
@@ -29,7 +30,7 @@ BASE = {
 
 SYNCED = {
     "mise.toml": 'min_version = "2026.10.1"\n\n[tools]\npython = "3.14.9"\nuv = "0.13.7"\nfd = "10.5.0"\n',
-    "requirements_test.txt": "pytest-homeassistant-custom-component==0.13.375\n",
+    "requirements_test.txt": "pytest-homeassistant==2026.11.2\n",
     "package.json": '{\n  "devDependencies": {\n    "prettier": "3.8.2",\n    "pyright": "1.1.409"\n  }\n}\n',
     ".devcontainer/devcontainer.json": (
         '{\n  "features": {\n    "ghcr.io/devcontainers-extra/features/mise:1": {\n'
@@ -83,11 +84,11 @@ def test_restores_every_lowered_pin(synced: Path) -> None:
     result = _guard(synced)
 
     assert result.returncode == 0, result.stderr
-    mise = _read(synced, "mise.toml")
-    assert 'min_version = "2026.10.22"' in mise
-    assert 'uv = "0.14.0"' in mise
-    assert 'fd = "10.5.0"' in mise
-    assert "==0.13.380" in _read(synced, "requirements_test.txt")
+    mise = tomllib.loads(_read(synced, "mise.toml"))
+    assert mise["min_version"] == "2026.10.22"
+    assert mise["tools"]["uv"] == "0.14.0"
+    assert mise["tools"]["fd"] == "10.5.0"
+    assert "==2026.11.4" in _read(synced, "requirements_test.txt")
     package = _read(synced, "package.json")
     assert '"prettier": "3.9.0"' in package
     assert '"pyright": "1.1.409"' in package
@@ -148,10 +149,22 @@ def test_each_occurrence_is_compared_on_its_own(synced: Path) -> None:
 @pytest.mark.unit
 def test_a_release_replaces_its_pre_release(synced: Path) -> None:
     """A beta pinned here is not kept over the stable release the template moves to."""
-    _write(synced, {"requirements_test.txt": "pytest-homeassistant-custom-component==0.13.381b1\n"})
+    _write(synced, {"requirements_test.txt": "pytest-homeassistant==2026.12.0b1\n"})
     subprocess.run(["git", "commit", "--quiet", "-am", "test: beta"], cwd=synced, check=True)
-    _write(synced, {**SYNCED, "requirements_test.txt": "pytest-homeassistant-custom-component==0.13.381\n"})
+    _write(synced, {**SYNCED, "requirements_test.txt": "pytest-homeassistant==2026.12.0\n"})
 
     _guard(synced)
 
-    assert "==0.13.381\n" in _read(synced, "requirements_test.txt")
+    assert "==2026.12.0\n" in _read(synced, "requirements_test.txt")
+
+
+@pytest.mark.unit
+def test_a_renamed_package_is_neither_restored_nor_dropped(synced: Path) -> None:
+    """A pin under a new package name is new, not lower, so the old name does not come back."""
+    _write(synced, {"requirements_test.txt": "pytest-homeassistant-custom-component==0.13.375\n"})
+    subprocess.run(["git", "commit", "--quiet", "-am", "test: old package"], cwd=synced, check=True)
+    _write(synced, {**SYNCED, "requirements_test.txt": "pytest-homeassistant==2026.11.2\n"})
+
+    _guard(synced)
+
+    assert _read(synced, "requirements_test.txt") == "pytest-homeassistant==2026.11.2\n"

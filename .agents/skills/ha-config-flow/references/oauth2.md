@@ -81,7 +81,7 @@ from homeassistant.helpers.config_entry_oauth2_flow import (
 )
 
 
-async def async_setup_entry(hass: HomeAssistant, entry: {ClassPrefix}ConfigEntry) -> bool:
+async def async_setup_entry(hass: HomeAssistant, entry: {ClassPrefix}ConfigEntry) -> None:
     """Set up from a config entry."""
     implementation = await async_get_config_entry_implementation(hass, entry)
     session = OAuth2Session(hass, entry, implementation)
@@ -89,7 +89,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: {ClassPrefix}ConfigEntry
     await coordinator.async_config_entry_first_refresh()
     entry.runtime_data = coordinator
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
-    return True
 ```
 
 The client calls `await session.async_ensure_token_valid()` before each request and reads

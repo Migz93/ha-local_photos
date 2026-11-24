@@ -121,9 +121,8 @@ subentry being edited, and `async_update_and_abort()` to finish a reconfigure st
 `next_flow` and `async_on_create_entry()` continue into another flow once an entry exists. Subentry and options flows
 depend on the config entry already existing, so they **can only** be reached through `async_on_create_entry()`.
 
-## Fields that depend on another field (HA 2026.11+)
+## Fields that depend on another field
 
 `data_entry_flow.Required(..., visible={"field": …, "value": …})` hides a field until another one matches, and
-`UnitOfMeasurementSelector` narrows its units by a device-class field. Until the minimum version reaches 2026.11, keep
-an extra step or a re-shown form instead. A hidden field is absent from `user_input`; read it with `.get()` and a
-fallback.
+`UnitOfMeasurementSelector` narrows its units by a device-class field — no extra step or re-shown form needed. A hidden
+field is absent from `user_input`; read it with `.get()` and a fallback.

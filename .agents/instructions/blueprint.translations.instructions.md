@@ -29,6 +29,25 @@ Translation files define user-facing text for config flows, options, entities, a
 
 **Language codes:** BCP47 format (e.g., `en`, `de`, `fr-CA`)
 
+## Language-aware from the first line
+
+An integration may ship in one language for years; it is still written so that adding the second one is a new file,
+not a refactoring.
+
+- **No user-facing text in Python.** Entity, attribute and device names, state values, select options, errors, repair
+  issues, notifications, units that are words, config flow text — all of it comes from a translation key. Log messages
+  stay English: they are for developers.
+- **States, attribute values and select options are `snake_case` codes**; the prose lives in the translation. A
+  display string as a state breaks every automation the day it is translated.
+- **Every value of an `ENUM` sensor, an enum attribute and a `select` has its `state` translation** — hassfest checks
+  the file format, not that each option is covered.
+- **Placeholders carry values** — a number, a name, a time — never a sentence or a word in one language.
+- **Text Home Assistant has no translation slot for** (a notification body, generated dashboard text, an entity
+  description) comes from the integration's own per-language files, loaded for `hass.config.language` — never from a
+  string literal.
+- **`en.json` is the base, whatever language the author works in.** Home Assistant falls back to English for every key
+  a language lacks, so `en.json` is always complete; the author's own language is a second file beside it.
+
 ## Critical Instructions
 
 ### Translation Placeholders
@@ -133,7 +152,8 @@ Imperativs](https://www.duden.de/sprachwissen/sprachratgeber/Bildung-des-Imperat
 
 ### Multi-Language Files
 
-All language files must have identical structure — only the values differ. A region-specific file (`fr-CA`, `pt-BR`)
+A language file carries no key `en.json` lacks — that is a stale or misspelled key. A key it lacks falls back to
+English, so a new key in `en.json` never requires touching another language file. A region-specific file (`fr-CA`, `pt-BR`)
 falls back to **English**, not to its base language, for every key it lacks — so copy the base language's string for
 each key that reads the same in the region, rather than leaving it out.
 
@@ -158,6 +178,10 @@ and its [style guide](https://contributors.home-assistant.io/writing/reference/s
 the retired ones: "action", not "service"; "integration", not "component"; "app", not "add-on"; "dashboard", not
 "Lovelace"; "backward-incompatible change", not "breaking change" (in text users read — commit footers keep
 `BREAKING CHANGE:`).
+
+The release notes prompt in `script/release-notes` (Rule 8) carries a condensed copy of these rules for the update
+dialog. In the upstream template, a change here goes there too; a project adds its own wording rules to
+`.github/release-notes/prompt.md`, since the script is template-managed.
 
 ## Best Practices
 

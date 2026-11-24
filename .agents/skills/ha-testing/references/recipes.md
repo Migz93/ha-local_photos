@@ -1,10 +1,11 @@
 # Test recipes
 
-Variants of the shared fixtures and patterns in [`../SKILL.md`](../SKILL.md) that only some integrations need.
+Optional fixture recipes for the patterns in [`../SKILL.md`](../SKILL.md). Check `tests/conftest.py` for the fixtures
+the repository already provides.
 
 ## `mock_api` for a third-party library client
 
-A project-defined `mock_api` can patch the client's HTTP method, so the client's own payload handling stays under test. When
+The default `mock_api` patches the client's HTTP method, so the client's own payload handling stays under test. When
 the client is a third-party library instead, keep the fixture name and patch the library class **where the integration
 imports it** — every import site, since setup and the config flow's validator each import it separately:
 
@@ -45,18 +46,6 @@ async def test_sensors(
     await snapshot_platform(hass, entity_registry, snapshot, config_entry.entry_id)
 ```
 
-`snapshot_platform` (from `pytest_homeassistant_custom_component.common`) accepts exactly one platform and fails on a
-disabled entity. `entity_registry_enabled_by_default` is a **Core** fixture that the custom-component package does not
-ship — define it in `conftest.py` when the first test needs it:
-
-```python
-@pytest.fixture
-def entity_registry_enabled_by_default() -> Generator[None]:
-    """Enable every entity, including those disabled by default."""
-    with patch(
-        "homeassistant.helpers.entity.Entity.entity_registry_enabled_default",
-        new_callable=PropertyMock,
-        return_value=True,
-    ):
-        yield
-```
+`snapshot_platform` (from `pytest_homeassistant.common`) accepts exactly one platform and fails on a
+disabled entity, so request `entity_registry_enabled_by_default`, which `pytest-homeassistant` provides — never define
+it again in `conftest.py`.

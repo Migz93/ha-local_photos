@@ -51,12 +51,12 @@ Where something _is_ fetched, the payload is the fact that cannot be guessed. As
 a curl dump, a log line, a screenshot of the vendor docs. Entities built against an invented shape look finished and
 fail on first contact.
 
-This table is the minimum, not the whole interview. [`ha-grill`](../ha-grill/SKILL.md) is how to get it out of the
+This table is the minimum, not the whole interview. `haci-grill` (the `haci-plan` plugin) is how to get it out of the
 developer — one question at a time, in dependency order — and it ends with a brief that steps 2 to 6 then execute.
 
 If a maintained PyPI library already wraps this API, weigh it against a small `aiohttp` client using the criteria in
 [`AGENTS.md`](../../../AGENTS.md) ("Custom Integration Flexibility"), and record the outcome in
-`docs/development/DECISIONS.md` ([`ha-planning`](../ha-planning/SKILL.md)). This is the decision that is most
+the project decision log named in `AGENTS.md` ([`blueprint-decisions`](../blueprint-decisions/SKILL.md)). This is the decision that is most
 expensive to revisit later.
 
 ## 2. Classify it in the manifest
@@ -185,7 +185,7 @@ verification is the developer's to do, not yours to claim.
 - Replace the placeholder images in `custom_components/<domain>/brand/` — the rules are in
   [`ha-marketplace`](../ha-marketplace/SKILL.md#3-brand-images). Ask the developer for the files; do not invent
   artwork.
-- Record the library-versus-own-client decision in `docs/development/DECISIONS.md` if you have not already.
+- Record the library-versus-own-client decision in the project log named in `AGENTS.md` if you have not already.
 - Commit in reviewable pieces, following [`ha-release`](../ha-release/SKILL.md). Never commit unasked.
 
 Scaffolding happens once. Once the integration is real, this skill is dead weight in every future session, so remove

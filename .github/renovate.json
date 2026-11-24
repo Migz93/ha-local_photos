@@ -48,6 +48,20 @@
       "matchStrings": [
         "# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)(?: extractVersion=(?<extractVersion>\\S+))?\\n\\s+version: \"?(?<currentValue>[^\"\\s]+)\"?"
       ]
+    },
+    {
+      "customType": "regex",
+      "description": "The agent plugin marketplace, pinned to one tag in each agent's settings. script/setup/agent-plugins --check fails unless all three move together, so the rule below groups them.",
+      "managerFilePatterns": [
+        "/(^|/)\\.claude/settings\\.json$/",
+        "/(^|/)\\.github/copilot/settings\\.json$/",
+        "/(^|/)\\.codex/config\\.toml$/"
+      ],
+      "matchStrings": [
+        "\"repo\":\\s*\"(?<depName>[^\"]+)\",\\s*\"ref\":\\s*\"(?<currentValue>[^\"]+)\"",
+        "source = \"https://github\\.com/(?<depName>[^\"]+?)\\.git\"\\s*ref = \"(?<currentValue>[^\"]+)\""
+      ],
+      "datasourceTemplate": "github-tags"
     }
   ],
   "packageRules": [
@@ -120,7 +134,7 @@
     },
     {
       "description": "Raise this pin manually with the supported Home Assistant minimum and test baseline. Dependabot also excludes it; optional Renovate must preserve the same policy.",
-      "matchPackageNames": ["pytest-homeassistant-custom-component"],
+      "matchPackageNames": ["pytest-homeassistant"],
       "groupName": "Home Assistant test environment",
       "addLabels": ["home-assistant"],
       "enabled": false
@@ -133,6 +147,13 @@
       "schedule": ["at any time"],
       "automerge": false,
       "automergeStrategy": "squash"
+    },
+    {
+      "description": "The agent plugins: one pull request that raises the tag in all three settings files. Development tooling, so it stays out of the changelog.",
+      "matchFileNames": [".claude/settings.json", ".github/copilot/settings.json", ".codex/config.toml"],
+      "matchDatasources": ["github-tags"],
+      "groupName": "agent plugins",
+      "addLabels": ["tooling"]
     }
   ]
 }

@@ -90,10 +90,10 @@ jobs:
 
       - name: Set up mise
         if: steps.tested.outputs.done != 'true'
-        uses: jdx/mise-action@f5be966e4a917d54244728e6a5fdcd1d93a35e6c # v5.2.6
+        uses: jdx/mise-action@90f833d396d0cc3674b631d2d225e306476c303a # v5.2.10
         with:
           # renovate: datasource=github-releases depName=jdx/mise extractVersion=^v(?<version>.+)$
-          version: "2026.11.3"
+          version: "2026.11.12"
 
       # A step rather than a job of its own: the scan takes seconds, and every job is billed in whole minutes.
       - name: Scan for secrets
@@ -132,9 +132,9 @@ jobs:
         with:
           path: |
             .local/ha-venv
-          key: ha-venv-${{ runner.os }}-ha${{ steps.ha_version.outputs.HA_VERSION }}-${{ hashFiles('mise.toml', '.config/mise/conf.d/*.toml', '**/requirements*.txt') }}
+          key: ha-venv-v2-${{ runner.os }}-ha${{ steps.ha_version.outputs.HA_VERSION }}-${{ hashFiles('mise.toml', '.config/mise/conf.d/*.toml', '**/requirements*.txt') }}
           restore-keys: |
-            ha-venv-${{ runner.os }}-ha${{ steps.ha_version.outputs.HA_VERSION }}-
+            ha-venv-v2-${{ runner.os }}-ha${{ steps.ha_version.outputs.HA_VERSION }}-
 
       - name: Install requirements
         if: steps.tested.outputs.done != 'true' && steps.docs.outputs.only != 'true'
@@ -143,6 +143,9 @@ jobs:
       # Lint, types and tests share one job: each would otherwise install the same venv and Home Assistant again.
       - name: Lint check
         if: steps.tested.outputs.done != 'true' && steps.docs.outputs.only != 'true'
+        env:
+          # Lets zizmor run its online audits, such as pins that do not match their version comment.
+          GH_TOKEN: ${{ github.token }}
         run: script/lint-check
 
       - name: Type check

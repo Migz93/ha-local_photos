@@ -62,11 +62,11 @@ ir.async_create_issue(
 without it, the issues of two entries overwrite each other. Put the entry ID in `data` as well — the repair flow reads
 it from there, not from `self.handler`, which is the domain.
 
-**Entry-scoped issues (HA 2026.11+):** `config_entry_id=entry.entry_id` on `async_create_issue` ties the issue to the
-entry — hidden while it is disabled, deleted when it is removed — and `ir.async_refresh_issues()` re-checks a whole set
-of issues (one per device, say) without deleting and re-creating the ones that still apply. Until then, delete an
-entry's issues in `async_remove_entry`, and never in `async_unload_entry` — a reload unloads too, and every issue the
-user ignored would come back.
+**Entry-scoped issues:** `config_entry_id=entry.entry_id` on `async_create_issue` ties the issue to the entry — hidden
+while it is disabled, deleted when it is removed, so no cleanup code is needed — and `ir.async_refresh_issues()`
+re-checks a whole set of issues (one per device, say) without deleting and re-creating the ones that still apply.
+Never delete an entry's issues in `async_unload_entry`: a reload unloads too, and every issue the user ignored would
+come back.
 
 `is_persistent=True` marks an issue that only exists because it was observed once — an update that failed, an
 unknown action in an automation — so it must survive a restart. Leave it off for anything the integration re-checks

@@ -2,14 +2,15 @@
 name: ha-release
 description: >-
   Cut a release of this Home Assistant custom integration, or prepare the commits that feed it. Use when asked to
-  "release", "cut a version", "bump the version", "prepare release notes", "what will the next version be", "write
-  a commit message", "why didn't release-please pick this up", or when reviewing whether a change is user-facing.
-  Covers the Conventional Commits rules commitlint enforces here, how release-please derives the version and
-  changelog, the pre-1.0 bump rules, script/version and script/release-notes, skipping a commit from the notes,
-  and the commit rules this project enforces for agents. SYMPTOMS — load this if you are about to: commit without
-  an explicit request; offer to `git push`; label a user-facing fix as `chore` (chore, like every hidden type, never
-  reaches the changelog and never triggers a release); write a commit subject over 100 characters or in sentence case;
-  or edit the version in `manifest.json` by hand.
+  "release", "cut a version", "bump the version", "prepare release notes", "release notes tone", "a release footer", "write a
+  commit message", "why didn't release-please pick this up", "update my branch", "rebase",
+  "stacked PR", "release a beta", or when reviewing whether a change is user-facing. Covers the
+  commit rules commitlint enforces, how release-please versions and writes the changelog, pre-1.0 bumps, betas,
+  the release scripts, and branch upkeep. SYMPTOMS — load this if you are about
+  to: commit without an explicit request; offer to `git push`; force-push without a lease; merge a pull request
+  another one is stacked on; label a user-facing fix as `chore` (hidden types never reach the changelog or trigger a
+  release); write a commit subject over 100 characters or in sentence case; edit the version in `manifest.json` by
+  hand; name a beta `1.2.0b1`; or edit the prompt in `script/release-notes`.
 ---
 
 # Releases and commit messages
@@ -21,9 +22,16 @@ version number and what users read in the changelog.
 
 - **Never commit automatically.** Only commit when the developer explicitly asks, in that message.
 - A previous commit request is **not** standing permission. Each commit needs a fresh instruction.
-- **Never push, and never offer to.** The developer handles `git push`.
+- **Push only when asked** — for a push or a pull request — and never offer to otherwise. The developer handles
+  `git push`.
 - Always run `git diff` (and `git status`) before writing a message. Describe what is actually staged, not what you
   remember doing.
+
+## Reference files
+
+| File                                                                                   | When to read                                                                   |
+| -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| [`references/branches-and-pull-requests.md`](references/branches-and-pull-requests.md) | Updating a branch, a conflict, splitting mixed work, or a stacked pull request |
 
 ## Commit message format
 
@@ -41,13 +49,13 @@ and never ships a release" — don't just name the type and cite the instruction
 
 ## What each type does to the release
 
-| Type                                      | Changelog section | Version effect (pre-1.0)           |
-| ----------------------------------------- | ----------------- | ---------------------------------- |
-| `feat`                                    | Features          | patch bump (`0.1.0` → `0.1.1`)     |
-| `fix`                                     | Bug Fixes         | patch bump                         |
-| `perf`                                    | Performance       | patch bump                         |
-| `feat!` / `BREAKING CHANGE:`              | Features + notice | **minor** bump (`0.1.0` → `0.2.0`) |
-| `refactor`, `chore`, `docs`, `test`, `ci` | hidden            | no release                         |
+| Type                                               | Changelog section | Version effect (pre-1.0)           |
+| -------------------------------------------------- | ----------------- | ---------------------------------- |
+| `feat`                                             | Features          | patch bump (`0.1.0` → `0.1.1`)     |
+| `fix`                                              | Bug Fixes         | patch bump                         |
+| `perf`                                             | Performance       | patch bump                         |
+| `feat!` / `BREAKING CHANGE:`                       | Features + notice | **minor** bump (`0.1.0` → `0.2.0`) |
+| `refactor`, `chore`, `docs`, `test`, `ci`, `build` | hidden or omitted | no release                         |
 
 After `1.0.0`, standard SemVer applies: `feat` → minor, `fix` → patch, breaking → major.
 
@@ -74,9 +82,39 @@ commits on main → release-please opens/updates "chore(main): release X.Y.Z"
 
 `manifest.json` → `version` is the source of truth and is bumped inside the release PR by release-please
 (`release-please-config.json` → `extra-files`). Never edit it by hand. The Marketplace depends on that: it offers the tag of the latest published GitHub Release — a bare tag is not enough — expects
-`version` to equal it, and shows the release body as the notes in the update dialog.
+`version` to equal it, and shows the release body as the notes in the update dialog. It joins the notes of every
+release since the installed one only within the last five releases. Workflows with a `release-asset` job add
+a link to the changelog in each release body.
 
-There is no automatic merge. The developer decides when to release.
+For **text on every release**, such as a support link or standing notice, add an optional
+`.github/release-notes/header.md` or `footer.md`. The `release-asset` job, where enabled, adds those files to the
+GitHub release body when present. Template sync can replace `release-please.yml`. The `changelog-sections`
+setting and the `release-notes` hook affect `CHANGELOG.md`. A support link takes its handle from `.github/FUNDING.yml`. Keep it to a line: the dialog
+repeats it for every release it joins. **How the notes read** — what the integration does, its own jargon, a title —
+can be specified in an optional `prompt.md` in the same folder, which `script/release-notes` reads when present.
+
+There is no automatic merge. The developer decides when to release — in batches rather than per change, so a user who
+updates now and then stays inside those five.
+
+## A beta
+
+**A beta is a GitHub pre-release, or it is not a beta.** The Marketplace never reads the tag: it offers a release
+marked as pre-release only to users who turned on the repository's **Pre-release** switch, and every other release to
+everyone. If the workflow includes the `release-asset` job, it marks a tag with a pre-release version accordingly.
+
+release-please plans a normal release unless told otherwise. Set the version with a footer as the **last line of the
+description** of the pull request that should trigger it — squash merging makes the description the commit body:
+
+```text
+Release-As: 1.2.0-beta.1
+```
+
+- **Always the hyphen form** — `1.2.0-beta.1`, `1.2.0-rc.1`. release-please reads `1.2.0b1` as `1.2.0` and ships
+  a regular release to every user.
+- **Every version of the beta series takes its own footer** — `-beta.2`, then `Release-As: 1.2.0` for the release
+  itself. Without one, release-please derives the next version from the commits again.
+- ❌ Do not set `prerelease: true` in `release-please-config.json`: before `1.0.0` it marks every release as a
+  pre-release, so nobody without the switch gets an update.
 
 How a published release reaches users, and getting the repository into the catalog in the first place, is
 [`ha-marketplace`](../ha-marketplace/SKILL.md).
@@ -89,13 +127,26 @@ script/version --tag        # v0.1.0
 script/version --check      # manifest.json vs .release-please-manifest.json
 
 script/release-notes              # preview AI-enhanced notes on stdout
-script/release-notes --apply      # write them into the open release PR body
+script/release-notes --apply      # use tool-free Claude and write the open release PR body
 script/release-notes --interactive # write context to .agents/scratch/ and open a session
+script/release-notes --prompt     # only write the prompt to .agents/scratch/, print its path
+script/release-notes --apply-file NOTES # write finished notes into the open release PR body
 ```
 
-`script/release-notes` needs GitHub Copilot CLI and `gh auth login`. It finds the PR labelled
-`autorelease: pending`, collects commits and a compact diff since the last tag, and rewrites the notes for a
-user-facing audience. Tunable via `COPILOT_MODEL` and `RELEASE_NOTES_DIFF_MAX`.
+`script/release-notes` needs a signed-in coding agent CLI — Claude Code, Codex, GitHub Copilot or OpenCode;
+`AGENT_CLI` picks one, `AGENT_MODEL` its model — and `gh auth login`. It rewrites the notes of the PR labelled
+`autorelease: pending` for users, from the commits and a compact diff since the last tag, with the sections of
+`release-please-config.json`.
+
+**Run `--apply` or `--apply-file` last, right before merging the release PR.** release-please rewrites that body whenever another
+commit reaches `main`, and the rewritten notes are gone without a word. `--apply` replaces only the notes under the
+version heading and leaves the rest of the body as release-please reads it back; the release takes its notes from
+there, while `CHANGELOG.md` keeps release-please's own wording.
+
+**Generate release notes in a fresh context.** The current agent session may know details that belong outside the
+public notes. Automatic `--apply` uses Claude Code in an empty folder with tools and customizations disabled.
+For another agent, use the preview or give the file from `--prompt` to a fresh session. Show the developer the notes
+and use `--apply-file` once they approve the text.
 
 **The generated notes are a draft.** Whoever publishes the release is accountable for their technical accuracy, so
 they get read before the release PR is merged — not after ([`AI_POLICY.md`](../../../AI_POLICY.md)).
@@ -125,8 +176,8 @@ Also confirm:
 - Every breaking change has a `BREAKING CHANGE:` footer and a migration note.
 - `docs/user/` and the README match the released behaviour.
 - `hacs.json` → `homeassistant` is still the minimum this release needs
-  ([`ha-marketplace`](../ha-marketplace/SKILL.md#2-hacsjson--when-to-touch-it)); raising it is a breaking change
-  ([`ha-breaking-changes`](../ha-breaking-changes/SKILL.md)).
+  ([`ha-marketplace`](../ha-marketplace/SKILL.md#2-hacsjson--when-to-touch-it)), and a raised one is named in the
+  changelog — it is not a breaking change ([`ha-breaking-changes`](../ha-breaking-changes/SKILL.md#1-recognise-it)).
 - `custom_components/<domain>/brand/icon.png` is the product's icon, not the blueprint's placeholder.
 
 ## Troubleshooting

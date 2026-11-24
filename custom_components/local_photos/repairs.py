@@ -5,12 +5,12 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from homeassistant.components.repairs import RepairsFlow
-from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers import issue_registry as ir
 
 from .const import DOMAIN
 
 if TYPE_CHECKING:
+    from homeassistant.components.repairs import RepairsFlowResult
     from homeassistant.core import HomeAssistant
 
 
@@ -45,7 +45,7 @@ def async_update_no_usable_photos_issue(hass: HomeAssistant, entry_id: str, has_
 class DirectoryNotFoundRepairFlow(RepairsFlow):
     """Repair flow for a missing photos directory."""
 
-    async def async_step_init(self, user_input: dict[str, str] | None = None) -> FlowResult:
+    async def async_step_init(self, user_input: dict[str, str] | None = None) -> RepairsFlowResult:
         """Prompt the user to reconfigure the integration."""
         if user_input is not None:
             return self.async_create_entry(data={})
@@ -55,7 +55,7 @@ class DirectoryNotFoundRepairFlow(RepairsFlow):
 class UnknownIssueRepairFlow(RepairsFlow):
     """Fallback repair flow for unknown issues."""
 
-    async def async_step_init(self, user_input: dict[str, str] | None = None) -> FlowResult:
+    async def async_step_init(self, user_input: dict[str, str] | None = None) -> RepairsFlowResult:
         """Acknowledge the issue."""
         if user_input is not None:
             return self.async_create_entry(data={})

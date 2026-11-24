@@ -23,11 +23,13 @@ source "$SCRIPT_DIR/../.lib/output.sh"
 
 run_hook "setup/sync-hacs" "pre"
 
+config_dir=${1:-$(ha_config_dir)}
+
 log_header "Syncing Marketplace- and HACS-installed integrations"
 
 # Check if config/custom_components exists
-if [[ ! -d "$SCRIPT_DIR/../../config/custom_components" ]]; then
-    log_info "No config/custom_components directory found"
+if [[ ! -d $config_dir/custom_components ]]; then
+    log_info "No $config_dir/custom_components directory found"
     exit 0
 fi
 
@@ -62,11 +64,10 @@ while IFS= read -r -d '' dir; do
     fi
 
     # Create or update symlink with relative path
-    # custom_components/$component → ../config/custom_components/$component
-    ln -sf "../config/custom_components/$component" "custom_components/$component"
+    ln -sfn "../$config_dir/custom_components/$component" "custom_components/$component"
     log_result 0 "Linked: $component"
     synced=$((synced + 1))
-done < <(find "$SCRIPT_DIR/../../config/custom_components" -maxdepth 1 -mindepth 1 -type d -print0)
+done < <(find -H "$config_dir/custom_components" -maxdepth 1 -mindepth 1 -type d -print0)
 
 if [[ $synced -eq 0 && $cleaned -eq 0 ]]; then
     log_info "No changes needed"

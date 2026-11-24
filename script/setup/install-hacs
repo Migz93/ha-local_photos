@@ -18,6 +18,13 @@ if [[ ${HA_INSTALL_HACS:-0} != 1 ]]; then
 fi
 activate_venv
 
+# Home Assistant 2026.11+ has Marketplace built in and blocks the legacy HACS integration.
+if python3 -c 'from importlib.util import find_spec; raise SystemExit(find_spec("homeassistant.components.marketplace") is None)' 2>/dev/null; then
+    log_info "Home Assistant has the Marketplace built in, skipping HACS"
+    exit 0
+fi
+
+config_dir=$HA_CONFIG_DIR
 if [[ ${HA_INSTALL_HACS:-"0"} == "1" ]]; then
     # Install HACS for testing with other custom components
     echo ""
@@ -25,18 +32,18 @@ if [[ ${HA_INSTALL_HACS:-"0"} == "1" ]]; then
     log_info "This allows testing your integration alongside other HACS components"
 
     # Ensure config directory is initialized by Home Assistant first
-    if [[ ! -f config/.HA_VERSION ]]; then
+    if [[ ! -f $config_dir/.HA_VERSION ]]; then
         log_step "Initializing Home Assistant config directory"
-        hass --config "${PWD}/config" --script ensure_config >/dev/null 2>&1 || true
+        hass --config "$PWD/$config_dir" --script ensure_config >/dev/null 2>&1 || true
     fi
 
     # Create custom_components directory if it doesn't exist
-    mkdir -p config/custom_components
+    mkdir -p "$config_dir/custom_components"
 
     # Clean up existing HACS installation if present
-    if [[ -d config/custom_components/hacs ]]; then
+    if [[ -d $config_dir/custom_components/hacs ]]; then
         log_step "Removing existing HACS installation"
-        rm -rf config/custom_components/hacs
+        rm -rf "$config_dir/custom_components/hacs"
     fi
     if [[ -L custom_components/hacs ]]; then
         log_step "Removing existing HACS symlink"
@@ -44,21 +51,22 @@ if [[ ${HA_INSTALL_HACS:-"0"} == "1" ]]; then
     fi
 
     # Download and extract HACS (stable release ZIP)
-    cd config/custom_components
     log_step "Downloading HACS"
-    if _download \
-        https://github.com/hacs/integration/releases/latest/download/hacs.zip \
-        hacs.zip &&
-        unzip -q hacs.zip -d hacs &&
-        rm hacs.zip; then
-        cd ../..
+    if (
+        cd "$config_dir/custom_components" &&
+            _download \
+                https://github.com/hacs/integration/releases/latest/download/hacs.zip \
+                hacs.zip &&
+            unzip -q hacs.zip -d hacs &&
+            rm hacs.zip
+    ); then
 
         # Install HACS Python dependencies
         log_step "Installing HACS Python dependencies"
         if uv pip install -q 'aiogithubapi>=22.10.1'; then
-            "$SCRIPT_DIR/setup/sync-hacs"
+            "$SCRIPT_DIR/setup/sync-hacs" "$config_dir"
             log_success "HACS installed successfully"
-            log_info "Location: ${BOLD}config/custom_components/hacs/${NC}"
+            log_info "Location: ${BOLD}${config_dir}/custom_components/hacs/${NC}"
             log_info "Version: Stable release (no auto-updates)"
         else
             log_warning "Failed to install HACS Python dependencies"
@@ -67,9 +75,8 @@ if [[ ${HA_INSTALL_HACS:-"0"} == "1" ]]; then
     else
         log_warning "HACS installation failed"
         log_info "You can install manually:"
-        log_step "${BOLD}cd config/custom_components${NC}"
+        log_step "${BOLD}cd ${config_dir}/custom_components${NC}"
         log_step "${BOLD}curl -fsSL https://github.com/hacs/integration/releases/latest/download/hacs.zip -o hacs.zip${NC}"
         log_step "${BOLD}unzip hacs.zip -d hacs && rm hacs.zip${NC}"
-        cd ../..
     fi
 fi

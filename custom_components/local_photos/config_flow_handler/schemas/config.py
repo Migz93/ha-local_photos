@@ -2,17 +2,17 @@
 
 from __future__ import annotations
 
-import voluptuous as vol
+import probatio
 
 from custom_components.local_photos.const import CONF_ALBUM_ID, CONF_FOLDER_PATH
 import homeassistant.helpers.config_validation as cv
 
 
-def get_user_schema(suggested_folder_path: str = "") -> vol.Schema:
+def get_user_schema(suggested_folder_path: str = "") -> probatio.Schema:
     """Return the schema for the user (folder path) step."""
-    return vol.Schema(
+    return probatio.Schema(
         {
-            vol.Required(CONF_FOLDER_PATH, default=suggested_folder_path): str,
+            probatio.Required(CONF_FOLDER_PATH, default=suggested_folder_path): str,
         }
     )
 
@@ -20,11 +20,11 @@ def get_user_schema(suggested_folder_path: str = "") -> vol.Schema:
 def get_album_select_schema(
     album_options: dict[str, str],
     default_albums: list[str] | None = None,
-) -> vol.Schema:
+) -> probatio.Schema:
     """Return the schema for the album selection step."""
-    return vol.Schema(
+    return probatio.Schema(
         {
-            vol.Required(CONF_ALBUM_ID, default=default_albums or ["ALL"]): cv.multi_select(album_options),
+            probatio.Required(CONF_ALBUM_ID, default=default_albums or ["ALL"]): cv.multi_select(album_options),
         }
     )
 

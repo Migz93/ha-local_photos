@@ -47,6 +47,8 @@ LICENSE
 hacs.json
 CONTRIBUTING.md
 DEPENDENCIES.md
+docs/development/DECISIONS.md
+docs/development/decisions/
 
 # ── Blueprint-specific files ─────────────────────────────────
 # Only meaningful in the blueprint; these entries stop the sync from reinstating them.
@@ -89,6 +91,7 @@ AI_POLICY.md
 # Ownership, funding, and other per-project settings
 .github/CODEOWNERS
 .github/FUNDING.yml
+.github/release-notes/
 
 # ── Script and DevContainer hooks ────────────────────────────
 # Your custom pre/post hooks live here — never overwritten by template sync
@@ -147,6 +150,8 @@ GEMINI.md
 .coderabbit.yaml
 .devcontainer/devcontainer.json
 .devcontainer/devcontainer-lock.json
+.devcontainer/on-create.sh
+.devcontainer/post-start.sh
 .agents/hooks/pre-push-check.sh
 script/tests/test_agent_hooks.py
 .agents/hooks/session-start.sh
@@ -154,6 +159,8 @@ script/tests/test_session_start.py
 script/push-gate
 script/tests/test_push_gate.py
 script/prune-blueprint
+script/import-overlay
+script/tests/test_import_overlay.py
 script/tests/test_prune_blueprint.py
 requirements_test.txt
 .devcontainer/.env.local.example

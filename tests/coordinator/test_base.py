@@ -8,7 +8,7 @@ from pathlib import Path
 
 from PIL import Image
 import pytest
-from pytest_homeassistant_custom_component.common import MockConfigEntry
+from pytest_homeassistant.common import MockConfigEntry
 
 from custom_components.local_photos.api import Album, LocalPhotosManager, MediaItem
 from custom_components.local_photos.const import (

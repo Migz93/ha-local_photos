@@ -47,11 +47,9 @@ tests/
 
 ## Fixtures
 
-**Suggested shared-fixture contracts** — inspect `tests/conftest.py` first, if it exists. The names below describe
-examples, not fixtures guaranteed to be present in this repository. Reuse existing fixtures; define missing ones
-only when test work is explicitly requested, following the bootstrap guidance in `ha-testing`:
+**Suggested shared fixtures.** Inspect `tests/conftest.py` first if it exists. Reuse the fixtures the project defines. Define missing fixtures only when test work is requested.
 
-- `auto_enable_custom_integrations` - autouse wrapper around `enable_custom_integrations`
+- `auto_enable_custom_integrations` - autouse wrapper around `enable_custom_integrations` where the project uses it
 - `config_entry` - `MockConfigEntry`, not yet added to `hass`
 - `mock_api` - the mocked data source, patched where the integration imports it
 - `init_integration` - `config_entry` set up with `mock_api` active, returned loaded
@@ -59,8 +57,9 @@ only when test work is explicitly requested, following the bootstrap guidance in
 **No `coordinator` fixture.** A test that builds or patches the coordinator couples itself to its constructor and
 internals; mock the client and let setup build the coordinator, then assert through `hass.states`.
 
-**From `pytest-homeassistant-custom-component`** — never redefine: `hass`, `hass_client` (authenticated HTTP client,
-needed for diagnostics), `entity_registry`, `device_registry`, `issue_registry`, `snapshot`, `caplog`. `freezer` comes
+**From `pytest-homeassistant`** — never redefine: `hass`,
+`hass_client` (authenticated HTTP client, needed for diagnostics), `entity_registry`, `device_registry`,
+`issue_registry`, `entity_registry_enabled_by_default`, `snapshot`, `caplog`. `freezer` comes
 from `pytest-freezer`; advance it with `freezer.tick()` plus `async_fire_time_changed`, never `time.sleep`.
 
 **Use [Syrupy](https://github.com/syrupy-project/syrupy) for large outputs:**
@@ -81,8 +80,8 @@ from `pytest-freezer`; advance it with `freezer.tick()` plus `async_fire_time_ch
 - No `if` in a test body — split the test, or parametrize with `pytest.param(..., id="...")` so a failure names its
   case
 - No network — sockets are blocked except to `127.0.0.1`; a test that needs one is missing a mock
-- Recorded payloads go in a `fixtures/` folder beside the test, loaded with `load_fixture(name)` — never with `DOMAIN`
-  as the second argument, which points at Core's tree
+- Recorded payloads go in `tests/fixtures/`, loaded with `load_fixture(name)` from a test file at any depth — never
+  with a second argument, which points at Core's tree
 
 ## Core Interface Testing
 

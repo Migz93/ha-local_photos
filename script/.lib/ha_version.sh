@@ -73,14 +73,12 @@ _pypi_populate_cache() {
 _PYPI_SORT_KEY_PY='
 import sys, re
 def key(v):
-    m = re.match(r"^(\d+)\.(\d+)\.(\d+)((?:a|b|rc)\d+)?$", v)
+    m = re.match(r"^(\d+)\.(\d+)(?:\.(\d+))?(?:(a|b|rc|\.dev)(\d+))?$", v)
     if not m:
-        return (0, 0, 0, 3, 0)
-    year, month, patch = int(m.group(1)), int(m.group(2)), int(m.group(3))
-    pre = m.group(4) or ""
-    pm = re.match(r"^(a|b|rc)(\d+)$", pre) if pre else None
-    prank = {"a": 0, "b": 1, "rc": 2}.get(pm.group(1), 3) if pm else 3
-    pnum  = int(pm.group(2)) if pm else 0
+        return (0, 0, 0, 4, 0)
+    year, month, patch = int(m.group(1)), int(m.group(2)), int(m.group(3) or 0)
+    prank = {".dev": 0, "a": 1, "b": 2, "rc": 3}.get(m.group(4), 4)
+    pnum = int(m.group(5) or 0)
     return (year, month, patch, prank, pnum)
 versions = [v.strip() for v in sys.stdin]
 print(sorted(versions, key=key)[-1] if versions else "")
@@ -168,10 +166,86 @@ print(versions[-1] if versions else "")
     _rha_result="$version"
 }
 
+# Print the minimum Home Assistant version in hacs.json; fails when there is none.
+hacs_min_ha_version() {
+    local version
+    version=$(sed -n 's/.*"homeassistant"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' hacs.json 2>/dev/null | head -1)
+    [[ -n $version ]] && printf '%s\n' "$version"
+}
+
+# Print the Home Assistant version the pytest-homeassistant pin names: without the plugin's repackaging suffix (.post1,
+# .dev1), but with a Home Assistant nightly's dated .dev. Prints nothing for another test package.
+ha_test_pin_version() {
+    local pin
+    pin=$(sed -n 's/^pytest-homeassistant==\([^[:space:]#]*\).*/\1/p' requirements_test.txt 2>/dev/null)
+    if [[ $pin =~ ^(.+)\.(post[0-9]+|dev[0-9]{1,7})$ ]]; then
+        pin=${BASH_REMATCH[1]}
+    fi
+    printf '%s\n' "$pin"
+}
+
+# Print "<test package> <pin> <Home Assistant version it names>"; for pytest-homeassistant-custom-component that comes
+# from PyPI and stays empty when PyPI cannot say. Prints nothing for neither package.
+ha_test_pin() {
+    local package pin ha=""
+    read -r package pin < <(sed -En 's/^(pytest-homeassistant(-custom-component)?)==([^[:space:]#]+).*/\1 \3/p' \
+        requirements_test.txt 2>/dev/null) || return 0
+    if [[ $package == pytest-homeassistant ]]; then
+        ha=$(ha_test_pin_version)
+    else
+        ha=$(curl -sf --retry 2 --connect-timeout 10 --max-time 30 "https://pypi.org/pypi/$package/$pin/json" | python3 -c '
+import json, sys
+for req in json.load(sys.stdin)["info"].get("requires_dist") or []:
+    if req.startswith("homeassistant=="):
+        print(req.split("==", 1)[1].split(";")[0].strip())
+        break
+' 2>/dev/null) || ha=""
+    fi
+    printf '%s %s %s\n' "$package" "$pin" "$ha"
+}
+
+# Print the release train of a Home Assistant version: 2026.11 for 2026.11, 2026.11.2 or 2026.11.0b3.
+ha_release_train() {
+    if [[ $1 =~ ^([0-9]+\.[0-9]+) ]]; then
+        printf '%s\n' "${BASH_REMATCH[1]}"
+    fi
+}
+
+ha_version_is_prerelease() {
+    [[ $1 =~ [0-9](a|b|rc)[0-9]+$|\.dev[0-9]+$ ]]
+}
+
+# Whether VERSION is a Home Assistant release on PyPI.
+ha_version_released() {
+    _pypi_populate_cache || return 1
+    printf '%s' "$_PYPI_JSON_CACHE" | python3 -c 'import json, sys; sys.exit(sys.argv[1] not in json.load(sys.stdin)["releases"])' "$1"
+}
+
+# Request a supported Python patch within the minor release Home Assistant ships with.
+# Return nothing when PyPI does not specify the lower bound.
+ha_python_for() {
+    _pypi_populate_cache || return 1
+    printf '%s' "$_PYPI_JSON_CACHE" | python3 -c '
+import json, re, sys
+files = json.load(sys.stdin)["releases"].get(sys.argv[1]) or []
+spec = next((f["requires_python"] for f in files if f.get("requires_python")), "")
+match = re.search(r">=\s*(\d+)\.(\d+)(?:\.(\d+))?", spec)
+if match:
+    major, minor, patch = match.groups()
+    print(f">={major}.{minor}.{patch or 0},<{major}.{int(minor) + 1}")
+' "$1"
+}
+
+# ha_version_newer A B — whether Home Assistant version A is newer than B, pre-releases included.
+ha_version_newer() {
+    [[ $1 != "$2" ]] || return 1
+    [[ $(printf '%s\n%s\n' "$1" "$2" | python3 -c "$_PYPI_SORT_KEY_PY") == "$1" ]]
+}
+
 # target_ha_version RESULT_VAR
 #
 # Resolves the Home Assistant version the tooling targets: HA_VERSION when it is
-# set, otherwise the minimum in hacs.json, where YEAR.MONTH.0 stands for the
+# set, otherwise the test pin for the hacs.json release train, falling back to the
 # latest patch of that month.
 #
 # Usage:
@@ -182,12 +256,16 @@ target_ha_version() {
     local _tha_version="${HA_VERSION:-}" _tha_resolved
 
     if [[ -z "$_tha_version" ]]; then
-        _tha_version=$(grep '"homeassistant"' hacs.json | head -1 | sed 's/.*"homeassistant"\s*:\s*"\([^"]*\)".*/\1/')
-        if [[ -z "$_tha_version" ]]; then
+        if ! _tha_version=$(hacs_min_ha_version); then
             log_error "HA_VERSION not set and could not be determined from hacs.json"
             return 1
         fi
-        if [[ "$_tha_version" =~ ^[0-9]{4}\.[0-9]+\.0$ ]]; then
+        local _tha_pin
+        _tha_pin=$(ha_test_pin_version)
+        if [[ -n $_tha_pin && $(ha_release_train "$_tha_pin") == "$(ha_release_train "$_tha_version")" ]] &&
+            ! ha_version_newer "$_tha_version" "$_tha_pin"; then
+            _tha_version="$_tha_pin"
+        elif [[ "$_tha_version" =~ ^[0-9]{4}\.[0-9]+\.0$ ]]; then
             _tha_version="${_tha_version%.*}"
         fi
     fi

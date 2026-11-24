@@ -67,7 +67,6 @@ This schema combines Home Assistant's official manifest requirements with the fi
   [category list](https://contributors.home-assistant.io/core/integrations/categories/), `category` or
   `category.subcategory`, the primary one first; `schemas/json/manifest_schema.json` carries the same list. Optional
   for a custom integration, but the catalog publishes them and the HACS action warns when the key is missing.
-  (HA 2026.11+) Hassfest rejects it before then, so add it only once `hacs.json` → `homeassistant` reaches 2026.11.
 - `quality_scale` - The tier the integration claims: `bronze` to `platinum`, or `custom`. Optional for custom
   integrations and not shown in the UI. Hassfest rejects `silver` and above without a non-empty `codeowners`.
 - `disabled` - A reason string that stops Home Assistant from loading the integration at all; it only logs the reason.
@@ -112,9 +111,8 @@ Use package name with version constraint:
 ```
 
 **Only list what Home Assistant does not already ship.** A custom integration must not repeat a package from Core's
-own `requirements.txt` for the supported version — `aiohttp`, `httpx`, `awesomeversion` and friends are already
-there, and pinning them from here can only conflict with Core. `probatio` is bundled starting with Home Assistant
-2026.9; this project still supports 2026.8 and must keep `voluptuous`, without adding a `probatio` requirement.
+own `requirements.txt` — `aiohttp`, `probatio`, `httpx`, `awesomeversion` and friends are already there, and
+pinning them from here can only conflict with Core.
 
 ## Validation
 

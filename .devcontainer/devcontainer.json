@@ -142,6 +142,8 @@
           ".agents/hooks/**": false,
           ".claude/settings.json": false,
           ".codex/hooks.json": false,
+          ".codex/config.toml": false,
+          ".github/copilot/settings.json": false,
           ".opencode/**": false,
           "opencode.json": false,
           "opencode.jsonc": false,
