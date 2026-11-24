@@ -54,7 +54,7 @@ async-timeout>=4.0.0
 
 **Includes:**
 
-- `pytest-homeassistant-custom-component` - Additional fixtures and utilities for custom component testing
+- `pytest-homeassistant` - Home Assistant test fixtures pinned to the matching Core release
 
 **Note:** Core testing tools (pytest, pytest-asyncio, pytest-aiohttp, pytest-cov, pytest-timeout, pytest-xdist, coverage, freezegun, requests-mock, respx) are already provided by Home Assistant core's `requirements_test.txt`, which is installed automatically via `script/setup/bootstrap`.
 
