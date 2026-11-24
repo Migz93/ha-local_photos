@@ -50,7 +50,7 @@ jobs:
     runs-on: ubuntu-26.04
     timeout-minutes: 10
     permissions:
-      contents: write # upload the asset and publish the draft release
+      contents: write # upload the asset and publish the release if it was a draft
     steps:
       - name: Checkout the release tag
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -90,7 +90,7 @@ jobs:
             echo "::notice::hacs.json does not set zip_release - no ZIP asset attached"
           fi
 
-      # The release stays a draft until its asset is attached, so no install ever finds it missing.
+      # ZIP projects should configure Release Please to create drafts, so the asset is attached before publishing.
       - name: Upload the ZIP asset, complete the notes, then publish
         env:
           GH_TOKEN: ${{ github.token }}

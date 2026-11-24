@@ -102,49 +102,50 @@ PY
 ha_envs_install() {
     local dir="$1" version="$2" base="https://raw.githubusercontent.com/home-assistant/core/$2"
     local tmp pinned status=0
-    tmp=$(mktemp -d)
+    tmp=$(mktemp -d) || return
     pinned=$(ha_test_pin_version)
     (
-        set -euo pipefail
-        _use_venv "$dir"
+        # The caller checks the subshell status, which disables Bash errexit here.
+        set -uo pipefail
+        _use_venv "$dir" || exit
         log_header "Installing development dependencies into Home Assistant $version"
-        uv pip install --requirement requirements_dev.txt
+        uv pip install --requirement requirements_dev.txt || exit
 
         log_header "Installing test dependencies"
         # requirements_test.txt pins the plugin release of the minimum version; another version needs its own.
         if [[ -n $pinned && $pinned != "$version" ]]; then
-            printf 'pytest-homeassistant==%s\n' "$version" >"$tmp/override.txt"
+            printf 'pytest-homeassistant==%s\n' "$version" >"$tmp/override.txt" || exit
             if ! uv pip install --requirement requirements_test.txt --override "$tmp/override.txt"; then
                 log_warning "No pytest-homeassistant $version — the tests run the $pinned fixtures against it"
-                uv pip install --requirement requirements_test.txt
+                uv pip install --requirement requirements_test.txt || exit
             fi
         else
-            uv pip install --requirement requirements_test.txt
+            uv pip install --requirement requirements_test.txt || exit
         fi
 
         if grep -qE '^[[:space:]]*[^[:space:]#]' requirements.txt 2>/dev/null; then
             log_header "Installing runtime dependencies"
-            uv pip install --requirement requirements.txt
+            uv pip install --requirement requirements.txt || exit
         fi
         if [[ -f requirements.local.txt ]]; then
             log_header "Installing local extra dependencies (requirements.local.txt)"
-            uv pip install --requirement requirements.local.txt
+            uv pip install --requirement requirements.local.txt || exit
         fi
 
         log_header "Installing Home Assistant $version runtime dependencies"
-        mkdir -p "$tmp/homeassistant"
-        _download "$base/homeassistant/package_constraints.txt" "$tmp/homeassistant/package_constraints.txt"
-        _download "$base/requirements.txt" "$tmp/requirements.txt"
-        _download "$base/requirements_all.txt" "$tmp/requirements_all.txt"
-        uv pip install --requirement "$tmp/requirements_all.txt"
+        mkdir -p "$tmp/homeassistant" || exit
+        _download "$base/homeassistant/package_constraints.txt" "$tmp/homeassistant/package_constraints.txt" || exit
+        _download "$base/requirements.txt" "$tmp/requirements.txt" || exit
+        _download "$base/requirements_all.txt" "$tmp/requirements_all.txt" || exit
+        uv pip install --requirement "$tmp/requirements_all.txt" || exit
 
         log_header "Installing Home Assistant $version test dependencies"
-        _download "$base/requirements_test_pre_commit.txt" "$tmp/requirements_test_pre_commit.txt"
-        _download "$base/requirements_test.txt" "$tmp/requirements_test.txt"
-        uv pip install --requirement "$tmp/requirements_test.txt"
+        _download "$base/requirements_test_pre_commit.txt" "$tmp/requirements_test_pre_commit.txt" || exit
+        _download "$base/requirements_test.txt" "$tmp/requirements_test.txt" || exit
+        uv pip install --requirement "$tmp/requirements_test.txt" || exit
 
         log_header "Installing Home Assistant $version core"
-        uv pip install "homeassistant==$version"
+        uv pip install "homeassistant==$version" || exit
     ) || status=$?
     rm -rf "$tmp"
     return "$status"

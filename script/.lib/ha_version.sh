@@ -221,16 +221,18 @@ ha_version_released() {
     printf '%s' "$_PYPI_JSON_CACHE" | python3 -c 'import json, sys; sys.exit(sys.argv[1] not in json.load(sys.stdin)["releases"])' "$1"
 }
 
-# Print the Python minor version a Home Assistant release asks for — the lower bound of its requires-python, which
-# is what Home Assistant ships it with — or nothing when PyPI does not say.
+# Request a supported Python patch within the minor release Home Assistant ships with.
+# Return nothing when PyPI does not specify the lower bound.
 ha_python_for() {
     _pypi_populate_cache || return 1
     printf '%s' "$_PYPI_JSON_CACHE" | python3 -c '
 import json, re, sys
 files = json.load(sys.stdin)["releases"].get(sys.argv[1]) or []
 spec = next((f["requires_python"] for f in files if f.get("requires_python")), "")
-match = re.search(r">=\s*(\d+)\.(\d+)", spec)
-print(f"{match[1]}.{match[2]}" if match else "")
+match = re.search(r">=\s*(\d+)\.(\d+)(?:\.(\d+))?", spec)
+if match:
+    major, minor, patch = match.groups()
+    print(f">={major}.{minor}.{patch or 0},<{major}.{int(minor) + 1}")
 ' "$1"
 }
 
