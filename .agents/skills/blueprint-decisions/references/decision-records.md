@@ -8,10 +8,10 @@ while the rule it left behind still leads back to its reasoning.
 
 ## Where
 
-| Decisions about                              | Folder                        |
-| -------------------------------------------- | ----------------------------- |
-| this integration                             | `docs/development/decisions/` |
-| the blueprint itself (only in the blueprint) | `docs/blueprint/decisions/`   |
+| Decisions about                               | Folder                        |
+| --------------------------------------------- | ----------------------------- |
+| an integration with per-file decision records | `docs/development/decisions/` |
+| the blueprint itself (only in the blueprint)  | `docs/blueprint/decisions/`   |
 
 Each folder has a `README.md` index that `script/decisions` writes — part of `script/lint`; `script/lint-check`
 fails while it is out of date. Never edit the index by hand; how agents read it is in `AGENTS.md` › _Documentation_.

@@ -40,5 +40,4 @@ reader who was not there — would the choice, without the record, read as an ov
 produce no record, and that is the normal outcome.** A log padded with decisions that made themselves is one nobody
 reads when a real one is in it.
 
-Before deciding, read the index, as `AGENTS.md` › _Documentation_ says: a new decision must not silently contradict an
-old one. The format, superseding, the rule a decision produces and the index script are in the reference above.
+Read the existing decision log named in `AGENTS.md` before proposing a new decision. Record it in that log. The reference above describes the per-file format and index for repositories that have adopted them.

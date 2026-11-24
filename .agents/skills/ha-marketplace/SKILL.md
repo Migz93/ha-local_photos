@@ -170,7 +170,7 @@ between two markers; GitHub does not render HTML comments, so it reads as before
   section. Keep the setup steps, entities, options and troubleshooting visible: users read those before installing.
 - Excluded text must not be referred to from visible text ("see the section above").
 - A start without its end hides the rest of the README in the Marketplace, and GitHub shows neither marker —
-  `tests/test_readme_markers.py` checks that they pair up.
+  Check that the markers pair up where the repository uses them.
 
 ## Do not
 

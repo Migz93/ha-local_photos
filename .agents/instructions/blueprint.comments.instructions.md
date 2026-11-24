@@ -64,7 +64,7 @@ Dropping a comment is not dropping the knowledge. Route it:
 | The information                                     | Home                                                     |
 | --------------------------------------------------- | -------------------------------------------------------- |
 | Why this change, now, and what it replaced          | The commit message body — see `blueprint.commit-message` |
-| An architectural decision and its alternatives      | a record in `docs/development/decisions/`                |
+| An architectural decision and its alternatives      | the project decision log named in `AGENTS.md`            |
 | How the layers fit together                         | `docs/development/ARCHITECTURE.md`                       |
 | How to carry out a recurring task                   | An agent skill under `.agents/skills/`                   |
 | A rule agents must follow while editing a file type | An instructions file here                                |

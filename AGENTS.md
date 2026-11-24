@@ -108,6 +108,8 @@ If a developer requests something that contradicts these instructions:
 2. **Developer Documentation** - Architecture and design decisions (`docs/development/`)
 3. **User Documentation** - End-user guides (`docs/user/`)
 
+Read and update the existing architecture decision log at `docs/development/DECISIONS.md`. A move to per-decision files requires maintainer approval.
+
 **AI Planning:** Use `.ai-scratch/` for temporary notes (never committed)
 
 **Rules:**

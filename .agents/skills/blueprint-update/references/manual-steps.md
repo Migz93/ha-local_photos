@@ -16,7 +16,7 @@ enable them and `script/setup/agent-plugins`, which bootstrap runs; recording de
 `blueprint-decisions` skill. In Claude Code they are invoked as `/haci-plan:haci-grill` and so on.
 
 1. Delete `.agents/skills/ha-grill/`, `.agents/skills/ha-planning/`, `.agents/skills/ha-issue-triage/`,
-   `.agents/skills/blueprint-change-review/`, `.claude/commands/issues.md` and `.github/skills/issues/` where the sync
+   `.agents/skills/blueprint-change-review/`, `.claude/commands/issues.md`, `.github/prompts/issues.prompt.md` and `.github/skills/issues/` where the sync
    left them. A copy you kept on purpose in
    `.templatesyncignore` has its `haci-` counterpart now; drop the copy or the entry.
 2. In `AGENTS.md`, replace their routing rows with the `blueprint-decisions` row; if you took the earlier step
@@ -59,7 +59,7 @@ fails while a project instructions file — one not named `blueprint.*` — has 
 
 **Check:** `test ! -e docs/development/DECISIONS.md && test -f docs/development/decisions/README.md && grep -q 'docs/development/decisions' AGENTS.md`
 
-Decisions are now one record per file in `docs/development/decisions/`, with an index `script/decisions` writes and
+With maintainer approval, migrate to one record per file in `docs/development/decisions/`, with an index `script/decisions` writes and
 checks — see [`blueprint-decisions`](../../blueprint-decisions/references/decision-records.md). The script arrives through the sync and
 passes while the old single file is still there; `docs/` and `AGENTS.md` are not synced:
 

@@ -172,7 +172,7 @@ Check each; the rule and how to comply live in the linked file.
 - `manifest.json`: correct `integration_type`, `iot_class`, `documentation`, `issue_tracker`, `codeowners`, `version`.
 - Publishing readiness, when it is meant to be listed — repository preconditions, brand images, the CI gates the
   catalog requires: [`ha-marketplace`](../ha-marketplace/SKILL.md) has the checklist.
-- Architectural choices worth remembering are decision records in `docs/development/decisions/`
+- Architectural choices worth remembering are entries in the project decision log named in `AGENTS.md`
   ([`blueprint-decisions`](../blueprint-decisions/SKILL.md)).
 - Breaking changes carry a migration path ([`ha-breaking-changes`](../ha-breaking-changes/SKILL.md)).
 - The project's own skills and instructions files are still worth their context: no rule a check now enforces, none

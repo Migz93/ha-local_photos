@@ -25,8 +25,7 @@ defaults and would otherwise surprise you: **MD013 off** (no line-length limit),
 ## README and the Marketplace
 
 The Marketplace shows `README.md` without what lies between `<!-- ha-marketplace:exclude-start -->` and
-`<!-- ha-marketplace:exclude-end -->`. Every start has its end (`tests/test_readme_markers.py`), and visible text never
-refers to excluded text. What goes where: [`ha-marketplace`](../skills/ha-marketplace/SKILL.md#6-the-readme-is-read-in-two-places).
+`<!-- ha-marketplace:exclude-end -->`. Pair each start with an end. Keep references to excluded text inside the markers. What goes where: [`ha-marketplace`](../skills/ha-marketplace/SKILL.md#6-the-readme-is-read-in-two-places).
 
 ## Structure
 

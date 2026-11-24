@@ -185,7 +185,7 @@ ir.async_create_issue(
 - Update `docs/user/` and the README where the old behaviour is described. Text users read — docs, release notes,
   repair issues — says **backward-incompatible change**, Home Assistant's term; `BREAKING CHANGE:` stays the commit
   footer, because release-please keys on it.
-- Record the reasoning as a decision record in `docs/development/decisions/` if it was an architectural call
+- Record the reasoning as an entry in the project decision log named in `AGENTS.md` if it was an architectural call
   ([`blueprint-decisions`](../blueprint-decisions/SKILL.md)).
 
 ## 6. Removing entities and devices

@@ -31,7 +31,7 @@ layering below is unchanged either way.
 ## API Client vs PyPI Library
 
 The criteria are in `AGENTS.md` § Custom Integration Flexibility. The choice is expensive to reverse: record it in
-a decision record in `docs/development/decisions/` (see [`blueprint-decisions`](../skills/blueprint-decisions/SKILL.md)). Adding the dependency itself —
+an entry in the project decision log named in `AGENTS.md` (see [`blueprint-decisions`](../skills/blueprint-decisions/SKILL.md)). Adding the dependency itself —
 `manifest.json` **and** `requirements.txt`, kept in sync — is covered by
 [`blueprint-tooling`](../skills/blueprint-tooling/SKILL.md).
 
