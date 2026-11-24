@@ -47,6 +47,8 @@ LICENSE
 hacs.json
 CONTRIBUTING.md
 DEPENDENCIES.md
+docs/development/DECISIONS.md
+docs/development/decisions/
 
 # ── Blueprint-specific files ─────────────────────────────────
 # Only meaningful in the blueprint; these entries stop the sync from reinstating them.

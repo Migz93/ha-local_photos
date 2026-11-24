@@ -38,7 +38,7 @@ WATCHED = (
     ".github/workflows/*.yml",
     "docs/development/*.md",
 )
-NOT_WATCHED = ("docs/development/decisions/*",)
+NOT_WATCHED = ("docs/development/DECISIONS.md", "docs/development/decisions/*")
 COORDINATOR_CLASS = r"^class (\w+?)DataUpdateCoordinator\b"
 
 Reader = Callable[[str], str | None]

@@ -99,7 +99,7 @@ def assert_no_hardcoded_ha_version(path: str) -> None:
 req_text = Path("requirements_test.txt").read_text(encoding="utf-8")
 pytest_ha: str | None = None
 if m := re.search(r"^pytest-homeassistant==([^\s#]+)", req_text, re.MULTILINE):
-    pytest_ha = re.sub(r"\.(post|dev)\d+$", "", m.group(1))
+    pytest_ha = re.sub(r"\.(?:post\d+|dev\d{1,7})$", "", m.group(1))
     pin = f"pytest-homeassistant=={m.group(1)}"
 elif m := re.search(r"^pytest-homeassistant-custom-component==([^\s#]+)", req_text, re.MULTILINE):
     # The predecessor, which a project below Home Assistant 2026.11 keeps; only PyPI knows which release it pins.
