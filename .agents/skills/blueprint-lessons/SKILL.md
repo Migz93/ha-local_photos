@@ -16,7 +16,7 @@ description: >-
 A test protects the one place it checks. A lesson protects every place an agent could repeat the mistake — but only if
 it lives where the next agent working on that code will meet it.
 
-**Read first:** the rule-versus-procedure split in `AGENTS.md` › _Where the rules live_ and the comment gates in
+**Read first:** `AGENTS.md` › _Documentation vs. Instructions_ and the comment gates in
 [`blueprint.comments`](../../instructions/blueprint.comments.instructions.md). Decisions — a trade-off that was
 chosen — are [`blueprint-decisions`](../blueprint-decisions/SKILL.md), not this.
 
@@ -25,7 +25,7 @@ chosen — are [`blueprint-decisions`](../blueprint-decisions/SKILL.md), not thi
 Every rule in prose costs context in every session that loads it, and a set nobody can survey is one agents stop
 following. Growth is the failure mode to guard against, not forgetting.
 
-- **The default for a fixed bug is a regression test and a commit body that names the cause — nothing else.**
+- Name the cause in the commit body. Add regression coverage when the developer requests test changes.
 - A lesson earns prose only when **all three** hold: the same mistake can recur in code that does not exist yet or
   that no test covers; an agent would plausibly make it, because nothing in the code or the shipped rules points the
   other way; and no check (§2) can catch it. **The strongest evidence for the first is that it already happened
@@ -67,7 +67,7 @@ Cheapest durable home first. Take the first that can hold it:
 | A decision record                                                                             | Only when a trade-off was chosen ([`blueprint-decisions`](../blueprint-decisions/SKILL.md))                           |
 | `AGENTS.md`                                                                                   | Only when it bears on most sessions — `AGENTS.md` costs context in every one                                          |
 
-Never only in your own memory — `AGENTS.md` › _When instructions conflict with a request_ says why.
+Record an approved recurring rule where the next contributor can find it.
 
 ## 3. The structure: lessons belong to an area, never to a bug
 
@@ -119,8 +119,7 @@ Most still have one place they start from. Take the first that fits:
 - **It holds in almost every session** → `AGENTS.md`.
 
 The list is closed: no `LESSONS.md`, no rules folder of its own, no second always-loaded file, no nested `AGENTS.md`.
-The routing table in `AGENTS.md` is the one index — every project file has a row there. `script/skills-check` enforces
-it for instructions files; a project skill's row is yours to add.
+List project instruction files in `AGENTS.md` and project skills in the [skill catalogue](../README.md). Run `script/skills-check` to verify the references.
 
 ### Create, extend, or nothing
 
@@ -135,8 +134,7 @@ Search first — `.agents/skills/<prefix>-*`, `.agents/instructions/<prefix>.*`,
   and why. Never edit the shipped file in place ([`.agents/README.md`](../../README.md)).
 - **The area's project file exists** → add the bullet to its `## Traps`.
 - **It does not** → create it with the frontmatter from
-  [`blueprint.markdown`](../../instructions/blueprint.markdown.instructions.md), and add its row to the routing table
-  in `AGENTS.md`.
+  [`blueprint.markdown`](../../instructions/blueprint.markdown.instructions.md) and list it in `AGENTS.md`.
 
 ## 4. A correction from the developer
 

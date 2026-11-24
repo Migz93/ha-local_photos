@@ -56,7 +56,7 @@ developer — one question at a time, in dependency order — and it ends with a
 
 If a maintained PyPI library already wraps this API, weigh it against a small `aiohttp` client using the criteria in
 [`AGENTS.md`](../../../AGENTS.md) ("Custom Integration Flexibility"), and record the outcome in
-a decision record in `docs/development/decisions/` ([`blueprint-decisions`](../blueprint-decisions/SKILL.md)). This is the decision that is most
+the project decision log named in `AGENTS.md` ([`blueprint-decisions`](../blueprint-decisions/SKILL.md)). This is the decision that is most
 expensive to revisit later.
 
 ## 2. Classify it in the manifest
@@ -185,7 +185,7 @@ verification is the developer's to do, not yours to claim.
 - Replace the placeholder images in `custom_components/<domain>/brand/` — the rules are in
   [`ha-marketplace`](../ha-marketplace/SKILL.md#3-brand-images). Ask the developer for the files; do not invent
   artwork.
-- Record the library-versus-own-client decision in `docs/development/decisions/` if you have not already.
+- Record the library-versus-own-client decision in the project log named in `AGENTS.md` if you have not already.
 - Commit in reviewable pieces, following [`ha-release`](../ha-release/SKILL.md). Never commit unasked.
 
 Scaffolding happens once. Once the integration is real, this skill is dead weight in every future session, so remove

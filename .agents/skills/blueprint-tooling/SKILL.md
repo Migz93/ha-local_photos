@@ -144,15 +144,13 @@ Assistant design constraint, not a repository quirk.
    same imports.
 3. `script/setup/bootstrap` (or a container rebuild) to install it.
 
-Pin versions in both, and keep them identical. Renovate raises the two files in one pull request; Dependabot skips
-`requirements.txt` on purpose, because it cannot see `manifest.json` and would split the pair. The commit type for such
-an update is `build`, which puts it into the changelog; Renovate uses it already.
+Keep both pins identical. Dependabot can update `requirements.txt`, so check the matching `manifest.json` pin before merging a runtime dependency update. The maintainer owns the manifest and the Home Assistant test baseline.
 
 | File                     | Template sync  | Contents                                         |
 | ------------------------ | -------------- | ------------------------------------------------ |
 | `requirements.txt`       | ❌ excluded    | your integration's runtime dependencies          |
 | `requirements_dev.txt`   | ✅ synced      | shared development tooling — do not add app deps |
-| `requirements_test.txt`  | ✅ synced      | shared test dependencies                         |
+| `requirements_test.txt`  | ❌ excluded    | project test baseline aligned with `hacs.json`   |
 | `requirements.local.txt` | — (gitignored) | your personal extras (`ipdb`, profilers, …)      |
 
 Before adding a dependency at all, decide whether you want it: the criteria are in `AGENTS.md` § Custom Integration

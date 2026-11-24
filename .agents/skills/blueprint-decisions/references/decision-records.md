@@ -8,13 +8,15 @@ while the rule it left behind still leads back to its reasoning.
 
 ## Where
 
+Use the existing `docs/development/DECISIONS.md` log unless the maintainer approves the per-file format below.
+
 | Decisions about                               | Folder                        |
 | --------------------------------------------- | ----------------------------- |
 | an integration with per-file decision records | `docs/development/decisions/` |
 | the blueprint itself (only in the blueprint)  | `docs/blueprint/decisions/`   |
 
 Each folder has a `README.md` index that `script/decisions` writes — part of `script/lint`; `script/lint-check`
-fails while it is out of date. Never edit the index by hand; how agents read it is in `AGENTS.md` › _Documentation_.
+fails while it is out of date. Generate the index with the script. Read the project's current log as directed by `AGENTS.md`.
 
 ## The file
 
